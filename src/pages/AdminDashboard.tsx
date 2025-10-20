@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,9 +6,38 @@ import { Users, TrendingUp, Award, Activity, BarChart3 } from "lucide-react";
 import { EmployeeList } from "@/components/admin/EmployeeList";
 import { PerformanceChart } from "@/components/admin/PerformanceChart";
 import { DepartmentStats } from "@/components/admin/DepartmentStats";
+import { MessageDialog } from "@/components/admin/MessageDialog";
+import { TaskDialog } from "@/components/admin/TaskDialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminDashboard = () => {
   const [selectedView, setSelectedView] = useState<"overview" | "employees" | "performance">("overview");
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [stats, setStats] = useState({ total: 0, tasks: 0 });
+  const { signOut } = useAuth();
+
+  useEffect(() => {
+    fetchEmployees();
+    fetchStats();
+  }, []);
+
+  const fetchEmployees = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .order('full_name');
+    setEmployees(data || []);
+  };
+
+  const fetchStats = async () => {
+    const { data: profiles } = await supabase.from('profiles').select('id');
+    const { data: tasks } = await supabase.from('tasks').select('id');
+    setStats({
+      total: profiles?.length || 0,
+      tasks: tasks?.length || 0,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background p-6 animate-fade-in">
@@ -21,9 +50,11 @@ const AdminDashboard = () => {
             </h1>
             <p className="text-muted-foreground mt-2">Manage your organization's performance</p>
           </div>
-          <Badge className="bg-primary text-primary-foreground px-4 py-2 text-sm">
-            Admin Access
-          </Badge>
+          <div className="flex gap-2">
+            <MessageDialog employees={employees} />
+            <TaskDialog employees={employees} onTaskCreated={fetchStats} />
+            <Button variant="outline" onClick={signOut}>Sign Out</Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -32,7 +63,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Employees</p>
-                <h3 className="text-3xl font-bold mt-2">24</h3>
+                <h3 className="text-3xl font-bold mt-2">{stats.total}</h3>
               </div>
               <div className="p-3 bg-primary/10 rounded-lg">
                 <Users className="w-6 h-6 text-primary" />
@@ -56,7 +87,7 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Active Tasks</p>
-                <h3 className="text-3xl font-bold mt-2">48</h3>
+                <h3 className="text-3xl font-bold mt-2">{stats.tasks}</h3>
               </div>
               <div className="p-3 bg-chart-3/10 rounded-lg">
                 <Activity className="w-6 h-6 text-chart-3" />
