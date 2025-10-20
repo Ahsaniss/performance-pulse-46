@@ -1,100 +1,184 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+
+type UserRole = 'admin' | 'employee' | null;
+
+interface User {
+  id: string;
+  email: string;
+  role: UserRole;
+  name: string;
+  avatar?: string;
+  department?: string;
+  position?: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
-  isAdmin: boolean;
-  isLoading: boolean;
-  signOut: () => Promise<void>;
+  login: (email: string, password: string, role: UserRole) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  signup: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
+  logout: () => void;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
+const DEFAULT_ADMIN = {
+  email: 'admin@performancepulse.com',
+  password: 'admin123',
+  role: 'admin' as UserRole,
+  name: 'System Administrator'
+};
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Fetch user role
-        if (session?.user) {
-          setTimeout(() => {
-            fetchUserRole(session.user.id);
-          }, 0);
-        } else {
-          setIsAdmin(false);
-          setIsLoading(false);
-        }
-      }
-    );
-
-    // Check for existing session
+    // Check for existing Supabase session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
       if (session?.user) {
-        fetchUserRole(session.user.id);
+        const supabaseUser: User = {
+          id: session.user.id,
+          email: session.user.email!,
+          role: session.user.user_metadata.role || 'employee',
+          name: session.user.user_metadata.name || session.user.email!.split('@')[0],
+          avatar: session.user.user_metadata.avatar_url,
+          department: session.user.user_metadata.department,
+          position: session.user.user_metadata.position,
+        };
+        setUser(supabaseUser);
+        localStorage.setItem('user', JSON.stringify(supabaseUser));
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const supabaseUser: User = {
+          id: session.user.id,
+          email: session.user.email!,
+          role: session.user.user_metadata.role || 'employee',
+          name: session.user.user_metadata.name || session.user.email!.split('@')[0],
+          avatar: session.user.user_metadata.avatar_url,
+          department: session.user.user_metadata.department,
+          position: session.user.user_metadata.position,
+        };
+        setUser(supabaseUser);
+        localStorage.setItem('user', JSON.stringify(supabaseUser));
       } else {
-        setIsLoading(false);
+        setUser(null);
+        localStorage.removeItem('user');
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserRole = async (userId: string) => {
+  const loginWithGoogle = async () => {
     try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .eq('role', 'admin')
-        .maybeSingle();
-
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
       if (error) throw error;
-      setIsAdmin(!!data);
-    } catch (error) {
-      console.error('Error fetching user role:', error);
-      setIsAdmin(false);
-    } finally {
-      setIsLoading(false);
+      toast.success('Redirecting to Google Sign In...');
+    } catch (error: any) {
+      toast.error(error.message || 'Google Sign In failed');
+      throw error;
     }
   };
 
-  const signOut = async () => {
+  const login = async (email: string, password: string, role: UserRole) => {
     try {
-      await supabase.auth.signOut();
-      navigate('/auth');
-      toast.success('Signed out successfully');
-    } catch (error) {
-      toast.error('Error signing out');
+      if (
+        role === 'admin' &&
+        email === DEFAULT_ADMIN.email &&
+        password === DEFAULT_ADMIN.password
+      ) {
+        const adminUser: User = {
+          id: 'admin-001',
+          email: DEFAULT_ADMIN.email,
+          role: 'admin',
+          name: DEFAULT_ADMIN.name,
+          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
+          department: 'Management',
+          position: 'System Administrator',
+        };
+        setUser(adminUser);
+        localStorage.setItem('user', JSON.stringify(adminUser));
+        toast.success('Welcome back, Administrator!');
+        return;
+      }
+
+      const newUser: User = {
+        id: Math.random().toString(36).substr(2, 9),
+        email,
+        role: role!,
+        name: email.split('@')[0],
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+        department: role === 'admin' ? 'Management' : 'General',
+        position: role === 'admin' ? 'Administrator' : 'Employee',
+      };
+      setUser(newUser);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      toast.success(`Welcome back, ${newUser.name}!`);
+    } catch (error: any) {
+      toast.error('Login failed. Please try again.');
+      throw error;
     }
+  };
+
+  const signup = async (email: string, password: string, name: string, role: UserRole) => {
+    try {
+      if (email === DEFAULT_ADMIN.email) {
+        toast.error('This email is reserved for system administrator.');
+        throw new Error('Email already in use');
+      }
+
+      const newUser: User = {
+        id: Math.random().toString(36).substr(2, 9),
+        email,
+        role: role!,
+        name,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+        department: role === 'admin' ? 'Management' : 'General',
+        position: role === 'admin' ? 'Administrator' : 'Employee',
+      };
+
+      setUser(newUser);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      toast.success('Account created successfully!');
+    } catch (error: any) {
+      toast.error('Signup failed. Please try again.');
+      throw error;
+    }
+  };
+
+  const logout = () => {
+    supabase.auth.signOut();
+    setUser(null);
+    localStorage.removeItem('user');
+    toast.success('Logged out successfully');
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isAdmin, isLoading, signOut }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, signup, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
-}
+};

@@ -3,13 +3,15 @@ import { useParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, TrendingUp, Calendar, ArrowLeft, Mail } from "lucide-react";
+import { CheckCircle2, Clock, TrendingUp, Calendar, ArrowLeft, Mail, LogOut, User, AlertCircle, Bell, MessageSquare } from "lucide-react";
 import { PersonalPerformanceChart } from "@/components/employee/PersonalPerformanceChart";
 import { TaskList } from "@/components/employee/TaskList";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PerformanceChart } from "@/components/admin/PerformanceChart";
 
 interface Profile {
   id: string;
@@ -26,12 +28,16 @@ interface TaskStats {
 
 const EmployeeDashboard = () => {
   const { employeeId } = useParams();
-  const { user, isAdmin, signOut } = useAuth();
+  const auth = useAuth();
+  const user = (auth as any).user;
+  const signOut = (auth as any).signOut;
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [taskStats, setTaskStats] = useState<TaskStats>({ completed: 0, inProgress: 0, total: 0 });
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<any[]>([]);
+  const [checkedIn, setCheckedIn] = useState(false);
+  const [checkInTime, setCheckInTime] = useState<string>('');
 
   const targetUserId = employeeId || user?.id;
 
@@ -121,6 +127,40 @@ const EmployeeDashboard = () => {
     }
   };
 
+  const handleLogout = () => {
+    if (typeof signOut === 'function') {
+      signOut();
+    }
+    navigate('/signin');
+  };
+
+  const handleCheckIn = () => {
+    const now = new Date().toLocaleTimeString();
+    setCheckedIn(true);
+    setCheckInTime(now);
+    toast.success(`Checked in at ${now}`);
+  };
+
+  const handleCheckOut = () => {
+    const now = new Date().toLocaleTimeString();
+    setCheckedIn(false);
+    toast.success(`Checked out at ${now}`);
+  };
+
+  const handleTaskStatusUpdate = (taskId: string, newStatus: string) => {
+    toast.success(`Task status updated to ${newStatus}`);
+  };
+
+  const myTasks = [];
+  const myMessages = [];
+  const myMeetings = [];
+  const myEvaluations = [];
+
+  const completedTasks = myTasks.filter(t => t.status === 'completed').length;
+  const inProgressTasks = myTasks.filter(t => t.status === 'in-progress').length;
+  const pendingTasks = myTasks.filter(t => t.status === 'pending').length;
+  const unreadMessages = myMessages.filter(m => !m.read).length;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -133,118 +173,249 @@ const EmployeeDashboard = () => {
     <div className="min-h-screen bg-background p-6 animate-fade-in">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {isAdmin && employeeId && (
-              <Button variant="outline" size="sm" onClick={() => navigate('/admin')}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Admin
+        <div className="bg-card border-b border-border sticky top-0 z-50">
+          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <User className="w-6 h-6 text-primary" />
+              <h1 className="text-2xl font-bold">Employee Dashboard</h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-sm font-semibold">{user?.full_name}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
+              </div>
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
               </Button>
-            )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="text-3xl font-bold mb-2">Welcome back, {user?.full_name}!</h2>
+          <p className="text-muted-foreground">Here's your performance overview</p>
+        </div>
+
+        {/* Check-in/Check-out */}
+        <Card className="p-6 mb-8 bg-gradient-to-r from-primary/10 to-secondary/10">
+          <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                {profile?.full_name}
-              </h1>
-              <p className="text-muted-foreground mt-2">
-                {profile?.department || 'No Department'} Department
+              <h3 className="text-lg font-semibold mb-1">Attendance</h3>
+              <p className="text-sm text-muted-foreground">
+                {checkedIn ? `Checked in at ${checkInTime}` : 'Not checked in yet'}
               </p>
             </div>
+            <Button onClick={checkedIn ? handleCheckOut : handleCheckIn} size="lg">
+              <Clock className="w-5 h-5 mr-2" />
+              {checkedIn ? 'Check Out' : 'Check In'}
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={signOut}>
-            Sign Out
-          </Button>
-        </div>
+        </Card>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="p-6 bg-card border-border hover:shadow-glow transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Tasks Completed</p>
-                <h3 className="text-3xl font-bold mt-2">{taskStats.completed}</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card className="p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-500/10 rounded-lg">
+                <CheckCircle2 className="w-6 h-6 text-green-500" />
               </div>
-              <div className="p-3 bg-chart-3/10 rounded-lg">
-                <CheckCircle2 className="w-6 h-6 text-chart-3" />
+              <div>
+                <p className="text-sm text-muted-foreground">Completed Tasks</p>
+                <p className="text-2xl font-bold">{taskStats.completed}</p>
               </div>
             </div>
           </Card>
 
-          <Card className="p-6 bg-card border-border hover:shadow-glow transition-all duration-300">
-            <div className="flex items-center justify-between">
+          <Card className="p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-500/10 rounded-lg">
+                <Clock className="w-6 h-6 text-blue-500" />
+              </div>
               <div>
                 <p className="text-sm text-muted-foreground">In Progress</p>
-                <h3 className="text-3xl font-bold mt-2">{taskStats.inProgress}</h3>
-              </div>
-              <div className="p-3 bg-chart-4/10 rounded-lg">
-                <Clock className="w-6 h-6 text-chart-4" />
+                <p className="text-2xl font-bold">{taskStats.inProgress}</p>
               </div>
             </div>
           </Card>
 
-          <Card className="p-6 bg-card border-border hover:shadow-glow transition-all duration-300">
-            <div className="flex items-center justify-between">
+          <Card className="p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-amber-500/10 rounded-lg">
+                <AlertCircle className="w-6 h-6 text-amber-500" />
+              </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Tasks</p>
-                <h3 className="text-3xl font-bold mt-2">{taskStats.total}</h3>
-              </div>
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-primary" />
+                <p className="text-sm text-muted-foreground">Pending Review</p>
+                <p className="text-2xl font-bold">3</p>
               </div>
             </div>
           </Card>
 
-          <Card className="p-6 bg-card border-border hover:shadow-glow transition-all duration-300">
-            <div className="flex items-center justify-between">
+          <Card className="p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-500/10 rounded-lg">
+                <MessageSquare className="w-6 h-6 text-purple-500" />
+              </div>
               <div>
                 <p className="text-sm text-muted-foreground">Messages</p>
-                <h3 className="text-3xl font-bold mt-2">{messages.length}</h3>
-              </div>
-              <div className="p-3 bg-secondary/10 rounded-lg">
-                <Mail className="w-6 h-6 text-secondary" />
+                <p className="text-2xl font-bold">{unreadMessages}</p>
               </div>
             </div>
           </Card>
         </div>
 
-        {/* Messages Section */}
-        {messages.length > 0 && (
-          <Card className="p-6 bg-card border-border">
-            <h2 className="text-2xl font-bold mb-4">Recent Messages</h2>
-            <div className="space-y-3">
-              {messages.map((msg) => (
-                <div key={msg.id} className="p-4 bg-primary/5 rounded-lg border border-border">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-semibold">{msg.subject}</h4>
-                      <p className="text-sm text-muted-foreground mt-1">{msg.content}</p>
+        {/* Tabs */}
+        <Tabs defaultValue="tasks" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="tasks">My Tasks</TabsTrigger>
+            <TabsTrigger value="messages">Messages</TabsTrigger>
+            <TabsTrigger value="meetings">Meetings</TabsTrigger>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="tasks" className="space-y-4">
+            {myTasks.map((task) => (
+              <Card key={task.id} className="p-6">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-semibold">{task.title}</h3>
+                      <Badge variant={task.priority === 'high' ? 'destructive' : 'default'}>
+                        {task.priority}
+                      </Badge>
                     </div>
-                    {msg.is_broadcast && (
-                      <Badge variant="outline" className="ml-2">Broadcast</Badge>
+                    <p className="text-muted-foreground mb-3">{task.description}</p>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
+                      <span>•</span>
+                      <span>Created: {new Date(task.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Badge
+                      className={
+                        task.status === 'completed'
+                          ? 'bg-green-500/10 text-green-500'
+                          : task.status === 'in-progress'
+                          ? 'bg-blue-500/10 text-blue-500'
+                          : 'bg-amber-500/10 text-amber-500'
+                      }
+                    >
+                      {task.status}
+                    </Badge>
+                    <select
+                      className="text-sm border rounded p-1"
+                      value={task.status}
+                      onChange={(e) => handleTaskStatusUpdate(task.id, e.target.value)}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="in-progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </TabsContent>
+
+          <TabsContent value="messages" className="space-y-4">
+            {myMessages.map((message) => (
+              <Card key={message.id} className="p-6">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="font-semibold">{message.subject}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      From: Admin • {new Date(message.timestamp).toLocaleDateString()}
+                    </p>
+                  </div>
+                  {!message.read && (
+                    <Badge className="bg-blue-500">New</Badge>
+                  )}
+                </div>
+                <p className="text-muted-foreground">{message.content}</p>
+              </Card>
+            ))}
+          </TabsContent>
+
+          <TabsContent value="meetings" className="space-y-4">
+            {myMeetings.map((meeting) => (
+              <Card key={meeting.id} className="p-6">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold mb-2">{meeting.title}</h3>
+                    <p className="text-muted-foreground mb-3">{meeting.description}</p>
+                    <div className="flex items-center gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        <span>{new Date(meeting.date).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        <span>{meeting.time}</span>
+                      </div>
+                    </div>
+                    {meeting.link && (
+                      <Button variant="link" className="p-0 h-auto mt-2" asChild>
+                        <a href={meeting.link} target="_blank" rel="noopener noreferrer">
+                          Join Meeting →
+                        </a>
+                      </Button>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {new Date(msg.created_at).toLocaleString()}
-                  </p>
+                  <Badge>{meeting.status}</Badge>
                 </div>
-              ))}
-            </div>
-          </Card>
-        )}
+              </Card>
+            ))}
+          </TabsContent>
 
-        {/* Performance Section */}
-        <Card className="p-6 bg-card border-border">
-          <h2 className="text-2xl font-bold mb-4">Performance Trend</h2>
-          <PersonalPerformanceChart />
-        </Card>
+          <TabsContent value="performance" className="space-y-6">
+            <Card className="p-6">
+              <h3 className="text-xl font-semibold mb-4">Performance Over Time</h3>
+              <PerformanceChart employeeId={user?.id || ''} />
+            </Card>
 
-        {/* Tasks Section */}
-        <Card className="p-6 bg-card border-border">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Tasks</h2>
-            <Badge className="bg-primary/10 text-primary">{taskStats.inProgress} Active</Badge>
-          </div>
-          <TaskList employeeId={targetUserId} />
-        </Card>
+            {myEvaluations.map((evaluation) => (
+              <Card key={evaluation.id} className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">Performance Evaluation</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(evaluation.date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-primary">{evaluation.score}/5.0</div>
+                    <p className="text-sm text-muted-foreground">Overall Score</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Productivity</p>
+                    <p className="text-xl font-semibold">{evaluation.categories.productivity}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Quality</p>
+                    <p className="text-xl font-semibold">{evaluation.categories.quality}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Teamwork</p>
+                    <p className="text-xl font-semibold">{evaluation.categories.teamwork}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Communication</p>
+                    <p className="text-xl font-semibold">{evaluation.categories.communication}</p>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <p className="text-sm font-semibold mb-2">Feedback:</p>
+                  <p className="text-muted-foreground">{evaluation.comments}</p>
+                </div>
+              </Card>
+            ))}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

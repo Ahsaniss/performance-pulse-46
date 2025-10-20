@@ -1,145 +1,221 @@
-import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Users, TrendingUp, Award, Activity, BarChart3 } from "lucide-react";
-import { EmployeeList } from "@/components/admin/EmployeeList";
-import { PerformanceChart } from "@/components/admin/PerformanceChart";
-import { DepartmentStats } from "@/components/admin/DepartmentStats";
-import { MessageDialog } from "@/components/admin/MessageDialog";
-import { TaskDialog } from "@/components/admin/TaskDialog";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { LogOut, LayoutDashboard, Users, Search, MessageSquare, Calendar, FileText, Plus } from "lucide-react";
+import { mockTasks, mockMeetings } from "@/lib/mockData";
+import { EmployeeGrid } from "@/components/admin/EmployeeGrid";
+import { EmployeeModal } from "@/components/admin/EmployeeModal";
+import { SendMessageModal } from "@/components/admin/SendMessageModal";
+import { CreateTaskModal } from "@/components/admin/CreateTaskModal";
+import { ScheduleMeetingModal } from "@/components/admin/ScheduleMeetingModal";
+import { DepartmentStats } from "@/components/admin/DepartmentStats";
+import { AdminOverview } from "@/components/admin/AdminOverview";
+import { AddEmployeeModal } from "@/components/admin/AddEmployeeModal";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEmployees } from "@/hooks/useEmployees";
 
-const AdminDashboard = () => {
-  const [selectedView, setSelectedView] = useState<"overview" | "employees" | "performance">("overview");
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [stats, setStats] = useState({ total: 0, tasks: 0 });
-  const { signOut } = useAuth();
+export const AdminDashboard = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const { employees } = useEmployees();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
 
-  useEffect(() => {
-    fetchEmployees();
-    fetchStats();
-  }, []);
-
-  const fetchEmployees = async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, full_name, email')
-      .order('full_name');
-    setEmployees(data || []);
+  const handleLogout = () => {
+    logout();
+    navigate('/signin');
   };
 
-  const fetchStats = async () => {
-    const { data: profiles } = await supabase.from('profiles').select('id');
-    const { data: tasks } = await supabase.from('tasks').select('id');
-    setStats({
-      total: profiles?.length || 0,
-      tasks: tasks?.length || 0,
-    });
-  };
+  const filteredEmployees = employees.filter(emp =>
+    emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    emp.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    emp.position.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalEmployees = employees.length;
+  const completedTasksToday = mockTasks.filter(t => t.status === 'completed').length;
+  const avgPerformance = employees.length > 0 
+    ? (employees.reduce((acc, emp) => acc + emp.performanceScore, 0) / totalEmployees).toFixed(1)
+    : '0.0';
+  const upcomingMeetings = mockMeetings.filter(m => m.status === 'scheduled').length;
 
   return (
-    <div className="min-h-screen bg-background p-6 animate-fade-in">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Admin Dashboard
-            </h1>
-            <p className="text-muted-foreground mt-2">Manage your organization's performance</p>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="bg-card border-b border-border sticky top-0 z-50 shadow-sm">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <LayoutDashboard className="w-6 h-6 text-primary" />
+              <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <img src={user?.avatar} alt={user?.name} className="w-10 h-10 rounded-full" />
+                <div className="text-right hidden md:block">
+                  <p className="text-sm font-semibold">{user?.name}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                </div>
+              </div>
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <MessageDialog employees={employees} />
-            <TaskDialog employees={employees} onTaskCreated={fetchStats} />
-            <Button variant="outline" onClick={signOut}>Sign Out</Button>
-          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold mb-2">Welcome back, {user?.name}!</h2>
+          <p className="text-muted-foreground">Here's what's happening in your organization today</p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="p-6 bg-card border-border hover:shadow-glow transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Employees</p>
-                <h3 className="text-3xl font-bold mt-2">{stats.total}</h3>
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="employees">Employees</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            {/* Summary Cards */}
+            <AdminOverview 
+              totalEmployees={totalEmployees}
+              completedTasksToday={completedTasksToday}
+              avgPerformance={avgPerformance}
+              upcomingMeetings={upcomingMeetings}
+            />
+
+            {/* Quick Actions */}
+            <Card className="p-6">
+              <h3 className="text-xl font-bold mb-4">Quick Actions</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Button onClick={() => setShowMessageModal(true)} className="h-auto py-4 flex flex-col gap-2">
+                  <MessageSquare className="w-6 h-6" />
+                  <span>Send Message</span>
+                </Button>
+                <Button onClick={() => setShowTaskModal(true)} className="h-auto py-4 flex flex-col gap-2">
+                  <Plus className="w-6 h-6" />
+                  <span>Assign Task</span>
+                </Button>
+                <Button onClick={() => setShowMeetingModal(true)} className="h-auto py-4 flex flex-col gap-2">
+                  <Calendar className="w-6 h-6" />
+                  <span>Schedule Meeting</span>
+                </Button>
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2">
+                  <FileText className="w-6 h-6" />
+                  <span>Export Reports</span>
+                </Button>
               </div>
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <Users className="w-6 h-6 text-primary" />
+            </Card>
+
+            {/* Recent Employees Preview */}
+            <Card className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold">Recent Employees</h3>
+                <Button variant="link" onClick={() => document.querySelector('[value="employees"]')?.dispatchEvent(new Event('click'))}>
+                  View All <Users className="w-4 h-4 ml-2" />
+                </Button>
               </div>
+              <EmployeeGrid 
+                employees={employees.slice(0, 4)} 
+                onEmployeeClick={setSelectedEmployee}
+              />
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="employees" className="space-y-6">
+            {/* Search Bar */}
+            <div className="flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Search employees by name, department, or position..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Button onClick={() => setShowAddEmployeeModal(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Employee
+              </Button>
             </div>
-          </Card>
 
-          <Card className="p-6 bg-card border-border hover:shadow-glow transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Avg Satisfaction</p>
-                <h3 className="text-3xl font-bold mt-2">4.2</h3>
-              </div>
-              <div className="p-3 bg-secondary/10 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-secondary" />
-              </div>
+            {/* Employee Count */}
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Users className="w-4 h-4" />
+              <span>Total Employees: {filteredEmployees.length}</span>
             </div>
-          </Card>
 
-          <Card className="p-6 bg-card border-border hover:shadow-glow transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Tasks</p>
-                <h3 className="text-3xl font-bold mt-2">{stats.tasks}</h3>
-              </div>
-              <div className="p-3 bg-chart-3/10 rounded-lg">
-                <Activity className="w-6 h-6 text-chart-3" />
-              </div>
-            </div>
-          </Card>
+            {/* Employee Grid */}
+            <EmployeeGrid 
+              employees={filteredEmployees} 
+              onEmployeeClick={setSelectedEmployee}
+            />
 
-          <Card className="p-6 bg-card border-border hover:shadow-glow transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Top Performers</p>
-                <h3 className="text-3xl font-bold mt-2">8</h3>
-              </div>
-              <div className="p-3 bg-chart-4/10 rounded-lg">
-                <Award className="w-6 h-6 text-chart-4" />
-              </div>
-            </div>
-          </Card>
-        </div>
+            {filteredEmployees.length === 0 && (
+              <Card className="p-12 text-center">
+                <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No employees found</h3>
+                <p className="text-muted-foreground mb-4">
+                  {searchQuery ? 'Try adjusting your search' : 'Add your first employee to get started'}
+                </p>
+                <Button onClick={() => setShowAddEmployeeModal(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Employee
+                </Button>
+              </Card>
+            )}
+          </TabsContent>
 
-        {/* Navigation Tabs */}
-        <div className="flex gap-2">
-          <Button
-            variant={selectedView === "overview" ? "default" : "outline"}
-            onClick={() => setSelectedView("overview")}
-          >
-            <BarChart3 className="w-4 h-4 mr-2" />
-            Overview
-          </Button>
-          <Button
-            variant={selectedView === "employees" ? "default" : "outline"}
-            onClick={() => setSelectedView("employees")}
-          >
-            <Users className="w-4 h-4 mr-2" />
-            Employees
-          </Button>
-          <Button
-            variant={selectedView === "performance" ? "default" : "outline"}
-            onClick={() => setSelectedView("performance")}
-          >
-            <TrendingUp className="w-4 h-4 mr-2" />
-            Performance
-          </Button>
-        </div>
+          <TabsContent value="analytics" className="space-y-6">
+            <DepartmentStats />
+          </TabsContent>
+        </Tabs>
+      </main>
 
-        {/* Content Area */}
-        {selectedView === "overview" && <DepartmentStats />}
-        {selectedView === "employees" && <EmployeeList />}
-        {selectedView === "performance" && <PerformanceChart />}
-      </div>
+      {/* Modals */}
+      {selectedEmployee && (
+        <EmployeeModal
+          employeeId={selectedEmployee}
+          onClose={() => setSelectedEmployee(null)}
+        />
+      )}
+
+      {showMessageModal && (
+        <SendMessageModal
+          onClose={() => setShowMessageModal(false)}
+        />
+      )}
+
+      {showTaskModal && (
+        <CreateTaskModal
+          onClose={() => setShowTaskModal(false)}
+        />
+      )}
+
+      {showMeetingModal && (
+        <ScheduleMeetingModal
+          onClose={() => setShowMeetingModal(false)}
+        />
+      )}
+
+      {showAddEmployeeModal && (
+        <AddEmployeeModal
+          onClose={() => setShowAddEmployeeModal(false)}
+        />
+      )}
     </div>
   );
 };
-
-export default AdminDashboard;
