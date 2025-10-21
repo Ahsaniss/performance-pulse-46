@@ -1,73 +1,49 @@
-# Welcome to your Lovable project
+# Performance Pulse - HRM System
 
-## Project info
+A comprehensive Human Resource Management System built with React, TypeScript, and modern web technologies. This system provides complete employee management, performance tracking, task assignment, and real-time communication features for organizations.
 
-**URL**: https://lovable.dev/projects/1053c76e-2dad-4c19-b489-ab1cbd23c29f
+## 🚀 Features
 
-## How can I edit this code?
+### Admin Dashboard
+- **Employee Management**: Add, view, edit, and manage employee profiles
+- **Task Assignment**: Assign tasks to employees with priorities and deadlines
+- **Performance Evaluations**: Rate employees across multiple categories
+- **Meeting Scheduling**: Schedule and manage team meetings
+- **Messaging System**: Send broadcast or individual messages to employees
+- **Department Analytics**: View department-wise statistics and performance metrics
+- **Attendance Tracking**: Monitor employee check-in/check-out records
 
-There are several ways of editing your application.
+### Employee Dashboard
+- **Personal Profile**: View and manage personal information
+- **Task Management**: View assigned tasks and update their status
+- **Performance History**: Track personal evaluations and performance scores
+- **Attendance**: Check-in/check-out functionality with time tracking
+- **Messages**: Receive and read messages from admin
+- **Meeting Calendar**: View scheduled meetings with links
+- **Performance Charts**: Visual representation of performance trends
 
-**Use Lovable**
+## 🛠️ Tech Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/1053c76e-2dad-4c19-b489-ab1cbd23c29f) and start prompting.
+- **Frontend Framework**: React 18 with TypeScript
+- **Routing**: React Router DOM
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **State Management**: React Context API
+- **Data Storage**: localStorage (with optional Google Sheets integration)
+- **Icons**: Lucide React
+- **Build Tool**: Vite
+- **Authentication**: Custom authentication with role-based access
 
-Changes made via Lovable will be committed automatically to this repo.
+## 📋 Prerequisites
 
-**Use your preferred IDE**
+- Node.js 16.x or higher
+- npm or yarn package manager
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🚀 Getting Started
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Installation
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd performance-pulse-46
 ```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/1053c76e-2dad-4c19-b489-ab1cbd23c29f) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
