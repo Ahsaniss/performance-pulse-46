@@ -1,5 +1,4 @@
 import { Card } from "@/components/ui/card";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 interface PerformanceChartProps {
   employeeId: string;
@@ -15,25 +14,55 @@ export const PerformanceChart = ({ employeeId }: PerformanceChartProps) => {
     { month: "Jun", performance: 4.5, tasks: 13 },
   ];
 
+  const maxPerformance = 5;
+  const maxTasks = Math.max(...data.map((d) => d.tasks));
+
   return (
     <Card className="p-6">
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
-          <YAxis stroke="hsl(var(--muted-foreground))" />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "hsl(var(--card))",
-              border: "1px solid hsl(var(--border))",
-              borderRadius: "var(--radius)",
-            }}
-          />
-          <Legend />
-          <Line type="monotone" dataKey="performance" stroke="hsl(var(--primary))" strokeWidth={2} name="Performance Score" />
-          <Line type="monotone" dataKey="tasks" stroke="hsl(var(--secondary))" strokeWidth={2} name="Tasks Completed" />
-        </LineChart>
-      </ResponsiveContainer>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="font-semibold">Performance Trends</h3>
+          <div className="flex gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-primary"></div>
+              <span>Performance Score</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+              <span>Tasks Completed</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {data.map((item, index) => (
+            <div key={index} className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="font-medium">{item.month}</span>
+                <div className="flex gap-4 text-xs text-muted-foreground">
+                  <span>Score: {item.performance}</span>
+                  <span>Tasks: {item.tasks}</span>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-secondary h-4 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-primary h-full transition-all"
+                    style={{ width: `${(item.performance / maxPerformance) * 100}%` }}
+                  />
+                </div>
+                <div className="bg-secondary h-4 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-blue-500 h-full transition-all"
+                    style={{ width: `${(item.tasks / maxTasks) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </Card>
   );
 };

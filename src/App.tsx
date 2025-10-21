@@ -15,7 +15,8 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
+      <AuthProvider>      VITE_GOOGLE_SHEETS_API_KEY=your_api_key
+      VITE_GOOGLE_SHEET_ID=your_sheet_id
         <Router>
           <Routes>
             <Route path="/" element={<Navigate to="/signin" replace />} />

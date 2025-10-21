@@ -3,25 +3,36 @@ import { dataStore } from '@/lib/store';
 import { Employee } from '@/types';
 
 export const useEmployees = () => {
-  const [employees, setEmployees] = useState<Employee[]>(dataStore.getEmployees());
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = dataStore.subscribe(() => {
+    // Initialize data from Google Sheets
+    dataStore.initialize().then(() => {
+      setEmployees(dataStore.getEmployees());
+      setLoading(false);
+    });
+
+    const maybeUnsubscribe = dataStore.subscribe(() => {
       setEmployees(dataStore.getEmployees());
     });
 
+    // dataStore.subscribe may return a cleanup function or a boolean; ensure we return a valid cleanup.
+    if (typeof maybeUnsubscribe === 'function') {
+      return maybeUnsubscribe;
+    }
+
     return () => {
-      // Call unsubscribe and ignore its return value so the cleanup returns void
-      unsubscribe();
+      // no-op cleanup
     };
   }, []);
 
-  const addEmployee = (employee: Omit<Employee, 'id'>) => {
-    return dataStore.addEmployee(employee);
+  const addEmployee = async (employee: Omit<Employee, 'id'>) => {
+    return await dataStore.addEmployee(employee);
   };
 
-  const updateEmployee = (id: string, updates: Partial<Employee>) => {
-    dataStore.updateEmployee(id, updates);
+  const updateEmployee = async (id: string, updates: Partial<Employee>) => {
+    await dataStore.updateEmployee(id, updates);
   };
 
   const deleteEmployee = (id: string) => {
@@ -30,6 +41,7 @@ export const useEmployees = () => {
 
   return {
     employees,
+    loading,
     addEmployee,
     updateEmployee,
     deleteEmployee,
