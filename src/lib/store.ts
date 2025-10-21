@@ -1,5 +1,5 @@
 import { Employee, Task, Message, Meeting, Evaluation, Attendance } from '@/types';
-import { googleSheetsService } from './googleSheets';
+import { mockEmployees, mockTasks, mockMessages, mockMeetings, mockEvaluations, mockAttendance } from './mockData';
 
 class DataStore {
   private employees: Employee[] = [];
@@ -15,18 +15,46 @@ class DataStore {
     if (this.initialized) return;
     
     try {
-      // Load all data from Google Sheets
-      this.employees = await googleSheetsService.getEmployees();
-      this.tasks = await googleSheetsService.getTasks();
-      this.messages = await googleSheetsService.getMessages();
-      this.meetings = await googleSheetsService.getMeetings();
-      this.evaluations = await googleSheetsService.getEvaluations();
-      this.attendance = await googleSheetsService.getAttendance();
+      // Load data from localStorage or use mock data
+      const savedEmployees = localStorage.getItem('hrm_employees');
+      const savedTasks = localStorage.getItem('hrm_tasks');
+      const savedMessages = localStorage.getItem('hrm_messages');
+      const savedMeetings = localStorage.getItem('hrm_meetings');
+      const savedEvaluations = localStorage.getItem('hrm_evaluations');
+      const savedAttendance = localStorage.getItem('hrm_attendance');
+
+      this.employees = savedEmployees ? JSON.parse(savedEmployees) : [...mockEmployees];
+      this.tasks = savedTasks ? JSON.parse(savedTasks) : [...mockTasks];
+      this.messages = savedMessages ? JSON.parse(savedMessages) : [...mockMessages];
+      this.meetings = savedMeetings ? JSON.parse(savedMeetings) : [...mockMeetings];
+      this.evaluations = savedEvaluations ? JSON.parse(savedEvaluations) : [...mockEvaluations];
+      this.attendance = savedAttendance ? JSON.parse(savedAttendance) : [...mockAttendance];
       
       this.initialized = true;
       this.notify();
     } catch (error) {
-      console.error('Failed to initialize data from Google Sheets:', error);
+      console.error('Failed to initialize data:', error);
+      // Use mock data as fallback
+      this.employees = [...mockEmployees];
+      this.tasks = [...mockTasks];
+      this.messages = [...mockMessages];
+      this.meetings = [...mockMeetings];
+      this.evaluations = [...mockEvaluations];
+      this.attendance = [...mockAttendance];
+      this.initialized = true;
+    }
+  }
+
+  private saveToLocalStorage() {
+    try {
+      localStorage.setItem('hrm_employees', JSON.stringify(this.employees));
+      localStorage.setItem('hrm_tasks', JSON.stringify(this.tasks));
+      localStorage.setItem('hrm_messages', JSON.stringify(this.messages));
+      localStorage.setItem('hrm_meetings', JSON.stringify(this.meetings));
+      localStorage.setItem('hrm_evaluations', JSON.stringify(this.evaluations));
+      localStorage.setItem('hrm_attendance', JSON.stringify(this.attendance));
+    } catch (error) {
+      console.error('Failed to save to localStorage:', error);
     }
   }
 
@@ -54,13 +82,9 @@ class DataStore {
       performanceScore: 0,
     };
     
-    // Add to Google Sheets
-    const success = await googleSheetsService.addEmployee(newEmployee);
-    
-    if (success) {
-      this.employees.push(newEmployee);
-      this.notify();
-    }
+    this.employees.push(newEmployee);
+    this.saveToLocalStorage();
+    this.notify();
     
     return newEmployee;
   }
@@ -69,22 +93,15 @@ class DataStore {
     const index = this.employees.findIndex(emp => emp.id === id);
     if (index !== -1) {
       this.employees[index] = { ...this.employees[index], ...updates };
-      
-      // Update in Google Sheets (row number is index + 2 because of header row)
-      // If googleSheetsService exposes an updateEmployee method implement it there.
-      // Use a typed escape here to avoid a compile-time error when the method is not declared.
-      if (typeof (googleSheetsService as any).updateEmployee === 'function') {
-        await (googleSheetsService as any).updateEmployee(this.employees[index], index + 2);
-      }
-      
+      this.saveToLocalStorage();
       this.notify();
     }
   }
 
   deleteEmployee(id: string) {
     this.employees = this.employees.filter(emp => emp.id !== id);
+    this.saveToLocalStorage();
     this.notify();
-    // Note: Deletion in Google Sheets requires more complex logic
   }
 
   // Task methods
@@ -99,12 +116,9 @@ class DataStore {
       createdAt: new Date().toISOString(),
     };
     
-    const success = await googleSheetsService.addTask(newTask);
-    
-    if (success) {
-      this.tasks.push(newTask);
-      this.notify();
-    }
+    this.tasks.push(newTask);
+    this.saveToLocalStorage();
+    this.notify();
     
     return newTask;
   }
@@ -113,10 +127,7 @@ class DataStore {
     const index = this.tasks.findIndex(t => t.id === id);
     if (index !== -1) {
       this.tasks[index] = { ...this.tasks[index], ...updates };
-      
-      // Update in Google Sheets
-      await googleSheetsService.updateTask(id, updates);
-      
+      this.saveToLocalStorage();
       this.notify();
     }
   }
@@ -134,12 +145,9 @@ class DataStore {
       read: false,
     };
     
-    const success = await googleSheetsService.addMessage(newMessage);
-    
-    if (success) {
-      this.messages.push(newMessage);
-      this.notify();
-    }
+    this.messages.push(newMessage);
+    this.saveToLocalStorage();
+    this.notify();
     
     return newMessage;
   }
@@ -155,12 +163,9 @@ class DataStore {
       id: `meet-${Date.now()}`,
     };
     
-    const success = await googleSheetsService.addMeeting(newMeeting);
-    
-    if (success) {
-      this.meetings.push(newMeeting);
-      this.notify();
-    }
+    this.meetings.push(newMeeting);
+    this.saveToLocalStorage();
+    this.notify();
     
     return newMeeting;
   }
@@ -172,14 +177,15 @@ class DataStore {
       id: `eval-${Date.now()}`,
     };
     
-    const success = await googleSheetsService.addEvaluation(newEvaluation);
-    
-    if (success) {
-      this.evaluations.push(newEvaluation);
-      this.notify();
-    }
+    this.evaluations.push(newEvaluation);
+    this.saveToLocalStorage();
+    this.notify();
     
     return newEvaluation;
+  }
+
+  getEvaluations() {
+    return [...this.evaluations];
   }
 
   // Attendance methods
@@ -189,12 +195,9 @@ class DataStore {
       id: `att-${Date.now()}`,
     };
     
-    const success = await googleSheetsService.addAttendance(newAttendance);
-    
-    if (success) {
-      this.attendance.push(newAttendance);
-      this.notify();
-    }
+    this.attendance.push(newAttendance);
+    this.saveToLocalStorage();
+    this.notify();
     
     return newAttendance;
   }
@@ -203,7 +206,7 @@ class DataStore {
     const index = this.attendance.findIndex(a => a.id === id);
     if (index !== -1) {
       this.attendance[index] = { ...this.attendance[index], ...updates };
-      // Note: You may want to add updateAttendance to googleSheetsService
+      this.saveToLocalStorage();
       this.notify();
     }
   }

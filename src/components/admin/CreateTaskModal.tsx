@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockEmployees } from '@/lib/mockData';
+import { useEmployees } from '@/hooks/useEmployees';
+import { useAuth } from '@/contexts/AuthContext';
+import { dataStore } from '@/lib/store';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -15,22 +17,35 @@ import { cn } from '@/lib/utils';
 
 interface CreateTaskModalProps {
   onClose: () => void;
+  preSelectedEmployeeId?: string;
 }
 
-export const CreateTaskModal = ({ onClose }: CreateTaskModalProps) => {
-  const [assignee, setAssignee] = useState<string>('');
+export const CreateTaskModal = ({ onClose, preSelectedEmployeeId }: CreateTaskModalProps) => {
+  const { employees } = useEmployees();
+  const { user } = useAuth();
+  const [assignee, setAssignee] = useState<string>(preSelectedEmployeeId || '');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [deadline, setDeadline] = useState<Date>();
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!assignee || !title || !description || !deadline) {
       toast.error('Please fill in all fields');
       return;
     }
 
-    const employee = mockEmployees.find(e => e.id === assignee);
+    await dataStore.addTask({
+      title,
+      description,
+      assignedTo: assignee,
+      assignedBy: user?.id || 'admin-001',
+      status: 'pending',
+      priority,
+      deadline: deadline.toISOString(),
+    });
+
+    const employee = employees.find(e => e.id === assignee);
     toast.success(`Task assigned to ${employee?.name}!`);
     onClose();
   };
@@ -45,12 +60,16 @@ export const CreateTaskModal = ({ onClose }: CreateTaskModalProps) => {
         <div className="space-y-4 mt-4">
           <div>
             <Label htmlFor="assignee">Assign To</Label>
-            <Select value={assignee} onValueChange={setAssignee}>
+            <Select 
+              value={assignee} 
+              onValueChange={setAssignee}
+              disabled={!!preSelectedEmployeeId}
+            >
               <SelectTrigger id="assignee">
                 <SelectValue placeholder="Select employee" />
               </SelectTrigger>
               <SelectContent>
-                {mockEmployees.map((emp) => (
+                {employees.filter(e => e.role === 'employee').map((emp) => (
                   <SelectItem key={emp.id} value={emp.id}>
                     {emp.name} - {emp.position}
                   </SelectItem>

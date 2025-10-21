@@ -14,6 +14,7 @@ import { ScheduleMeetingModal } from "@/components/admin/ScheduleMeetingModal";
 import { DepartmentStats } from "@/components/admin/DepartmentStats";
 import { AdminOverview } from "@/components/admin/AdminOverview";
 import { AddEmployeeModal } from "@/components/admin/AddEmployeeModal";
+import { AddEvaluationModal } from "@/components/admin/AddEvaluationModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEmployees } from "@/hooks/useEmployees";
 
@@ -27,6 +28,7 @@ export const AdminDashboard = () => {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [showAddEvaluationModal, setShowAddEvaluationModal] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -214,6 +216,12 @@ export const AdminDashboard = () => {
       {showAddEmployeeModal && (
         <AddEmployeeModal
           onClose={() => setShowAddEmployeeModal(false)}
+        />
+      )}
+
+      {showAddEvaluationModal && (
+        <AddEvaluationModal
+          onClose={() => setShowAddEvaluationModal(false)}
         />
       )}
     </div>

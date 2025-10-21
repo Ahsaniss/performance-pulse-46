@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useMemo } from "react";
+import { TrendingUp, Users, Briefcase } from "lucide-react";
 
 export const DepartmentStats = () => {
   const { employees } = useEmployees();
@@ -31,6 +32,7 @@ export const DepartmentStats = () => {
   if (departmentData.length === 0) {
     return (
       <Card className="p-12 text-center">
+        <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
         <h2 className="text-2xl font-bold mb-4">Department Overview</h2>
         <p className="text-muted-foreground">No department data available. Add employees to see statistics.</p>
       </Card>
@@ -40,44 +42,67 @@ export const DepartmentStats = () => {
   return (
     <div className="space-y-6 animate-slide-up">
       <Card className="p-6 bg-card border-border">
-        <h2 className="text-2xl font-bold mb-6">Department Overview</h2>
+        <div className="flex items-center gap-2 mb-6">
+          <TrendingUp className="w-6 h-6 text-primary" />
+          <h2 className="text-2xl font-bold">Department Overview</h2>
+        </div>
         
         <div className="space-y-6">
           {departmentData.map((dept) => (
-            <div key={dept.department} className="space-y-2">
+            <div key={dept.department} className="space-y-3 p-4 bg-muted/50 rounded-lg">
               <div className="flex justify-between items-center">
-                <span className="font-semibold">{dept.department}</span>
+                <span className="font-semibold text-lg">{dept.department}</span>
                 <span className="text-sm text-muted-foreground">
-                  {dept.employees} employees, {dept.tasks} tasks
+                  {dept.employees} employees • {dept.tasks} tasks
                 </span>
               </div>
               
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground w-20">Employees</span>
-                  <div className="flex-1 bg-secondary h-6 rounded-full overflow-hidden">
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Employee Count
+                    </span>
+                    <span className="text-sm font-semibold">{dept.employees}</span>
+                  </div>
+                  <div className="w-full bg-secondary h-3 rounded-full overflow-hidden">
                     <div 
-                      className="bg-primary h-full flex items-center justify-end px-2 transition-all"
+                      className="bg-primary h-full transition-all duration-500 ease-out"
                       style={{ width: `${(dept.employees / maxEmployees) * 100}%` }}
-                    >
-                      <span className="text-xs font-semibold text-primary-foreground">
-                        {dept.employees}
-                      </span>
-                    </div>
+                    />
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground w-20">Tasks</span>
-                  <div className="flex-1 bg-secondary h-6 rounded-full overflow-hidden">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Briefcase className="w-4 h-4" />
+                      Active Tasks
+                    </span>
+                    <span className="text-sm font-semibold">{dept.tasks}</span>
+                  </div>
+                  <div className="w-full bg-secondary h-3 rounded-full overflow-hidden">
                     <div 
-                      className="bg-blue-500 h-full flex items-center justify-end px-2 transition-all"
+                      className="bg-blue-500 h-full transition-all duration-500 ease-out"
                       style={{ width: `${(dept.tasks / maxTasks) * 100}%` }}
-                    >
-                      <span className="text-xs font-semibold text-white">
-                        {dept.tasks}
-                      </span>
-                    </div>
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm text-muted-foreground flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4" />
+                      Avg Performance
+                    </span>
+                    <span className="text-sm font-semibold">{dept.satisfaction}/5.0</span>
+                  </div>
+                  <div className="w-full bg-secondary h-3 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-green-500 h-full transition-all duration-500 ease-out"
+                      style={{ width: `${(dept.satisfaction / 5) * 100}%` }}
+                    />
                   </div>
                 </div>
               </div>
@@ -88,20 +113,25 @@ export const DepartmentStats = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {departmentData.map((dept) => (
-          <Card key={dept.department} className="p-6 bg-card border-border hover:shadow-lg transition-all duration-300">
-            <h3 className="font-semibold text-lg mb-4">{dept.department}</h3>
+          <Card key={dept.department} className="p-6 bg-card border-border hover:shadow-lg transition-all duration-300 hover:scale-105">
+            <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Users className="w-5 h-5 text-primary" />
+              </div>
+              {dept.department}
+            </h3>
             <div className="space-y-3">
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Employees</span>
-                <span className="font-semibold">{dept.employees}</span>
+                <span className="font-semibold text-lg">{dept.employees}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Avg Performance</span>
-                <span className="font-semibold text-primary">{dept.satisfaction}/5.0</span>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Performance</span>
+                <span className="font-semibold text-lg text-primary">{dept.satisfaction}/5.0</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Active Tasks</span>
-                <span className="font-semibold">{dept.tasks}</span>
+                <span className="font-semibold text-lg">{dept.tasks}</span>
               </div>
             </div>
           </Card>
