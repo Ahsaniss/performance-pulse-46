@@ -21,6 +21,8 @@ interface AuthContextType {
   signup: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  isAdmin: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,6 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check for existing Supabase session
@@ -54,6 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(supabaseUser);
         localStorage.setItem('user', JSON.stringify(supabaseUser));
       }
+      setIsLoading(false);
     });
 
     // Listen for auth changes
@@ -169,7 +173,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, signup, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      loginWithGoogle, 
+      signup, 
+      logout, 
+      isAuthenticated: !!user,
+      isAdmin: user?.role === 'admin',
+      isLoading
+    }}>
       {children}
     </AuthContext.Provider>
   );
