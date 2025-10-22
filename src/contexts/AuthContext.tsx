@@ -27,13 +27,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const DEFAULT_ADMIN = {
-  email: 'admin@performancepulse.com',
-  password: 'admin123',
-  role: 'admin' as UserRole,
-  name: 'System Administrator'
-};
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem('user');
@@ -43,16 +36,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     // Check for existing Supabase session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
+        // Fetch user role from database
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .single();
+
+        // Fetch user profile
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
         const supabaseUser: User = {
           id: session.user.id,
           email: session.user.email!,
-          role: session.user.user_metadata.role || 'employee',
-          name: session.user.user_metadata.name || session.user.email!.split('@')[0],
-          avatar: session.user.user_metadata.avatar_url,
-          department: session.user.user_metadata.department,
-          position: session.user.user_metadata.position,
+          role: roleData?.role || 'employee',
+          name: profileData?.full_name || session.user.user_metadata.full_name || session.user.email!.split('@')[0],
+          avatar: profileData?.avatar_url || session.user.user_metadata.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
+          department: profileData?.department || session.user.user_metadata.department,
+          position: profileData?.position || session.user.user_metadata.position,
         };
         setUser(supabaseUser);
         localStorage.setItem('user', JSON.stringify(supabaseUser));
@@ -63,17 +70,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        const supabaseUser: User = {
-          id: session.user.id,
-          email: session.user.email!,
-          role: session.user.user_metadata.role || 'employee',
-          name: session.user.user_metadata.name || session.user.email!.split('@')[0],
-          avatar: session.user.user_metadata.avatar_url,
-          department: session.user.user_metadata.department,
-          position: session.user.user_metadata.position,
-        };
-        setUser(supabaseUser);
-        localStorage.setItem('user', JSON.stringify(supabaseUser));
+        // Defer database calls to avoid deadlock
+        setTimeout(async () => {
+          // Fetch user role from database
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .single();
+
+          // Fetch user profile
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          const supabaseUser: User = {
+            id: session.user.id,
+            email: session.user.email!,
+            role: roleData?.role || 'employee',
+            name: profileData?.full_name || session.user.user_metadata.full_name || session.user.email!.split('@')[0],
+            avatar: profileData?.avatar_url || session.user.user_metadata.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
+            department: profileData?.department || session.user.user_metadata.department,
+            position: profileData?.position || session.user.user_metadata.position,
+          };
+          setUser(supabaseUser);
+          localStorage.setItem('user', JSON.stringify(supabaseUser));
+        }, 0);
       } else {
         setUser(null);
         localStorage.removeItem('user');
@@ -101,66 +125,67 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string, role: UserRole) => {
     try {
-      if (
-        role === 'admin' &&
-        email === DEFAULT_ADMIN.email &&
-        password === DEFAULT_ADMIN.password
-      ) {
-        const adminUser: User = {
-          id: 'admin-001',
-          email: DEFAULT_ADMIN.email,
-          role: 'admin',
-          name: DEFAULT_ADMIN.name,
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
-          department: 'Management',
-          position: 'System Administrator',
-        };
-        setUser(adminUser);
-        localStorage.setItem('user', JSON.stringify(adminUser));
-        toast.success('Welcome back, Administrator!');
-        return;
-      }
-
-      const newUser: User = {
-        id: Math.random().toString(36).substr(2, 9),
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        role: role!,
-        name: email.split('@')[0],
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-        department: role === 'admin' ? 'Management' : 'General',
-        position: role === 'admin' ? 'Administrator' : 'Employee',
-      };
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
-      toast.success(`Welcome back, ${newUser.name}!`);
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        // Fetch user role from database
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user.id)
+          .single();
+
+        // Fetch user profile
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        const supabaseUser: User = {
+          id: data.user.id,
+          email: data.user.email!,
+          role: roleData?.role || 'employee',
+          name: profileData?.full_name || data.user.user_metadata.full_name || data.user.email!.split('@')[0],
+          avatar: profileData?.avatar_url || data.user.user_metadata.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user.email}`,
+          department: profileData?.department || data.user.user_metadata.department,
+          position: profileData?.position || data.user.user_metadata.position,
+        };
+        setUser(supabaseUser);
+        localStorage.setItem('user', JSON.stringify(supabaseUser));
+        toast.success(`Welcome back, ${supabaseUser.name}!`);
+      }
     } catch (error: any) {
-      toast.error('Login failed. Please try again.');
+      toast.error(error.message || 'Login failed. Please try again.');
       throw error;
     }
   };
 
   const signup = async (email: string, password: string, name: string, role: UserRole) => {
     try {
-      if (email === DEFAULT_ADMIN.email) {
-        toast.error('This email is reserved for system administrator.');
-        throw new Error('Email already in use');
-      }
-
-      const newUser: User = {
-        id: Math.random().toString(36).substr(2, 9),
+      const { data, error } = await supabase.auth.signUp({
         email,
-        role: role!,
-        name,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-        department: role === 'admin' ? 'Management' : 'General',
-        position: role === 'admin' ? 'Administrator' : 'Employee',
-      };
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: {
+            full_name: name,
+          }
+        }
+      });
 
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
-      toast.success('Account created successfully!');
+      if (error) throw error;
+
+      if (data.user) {
+        toast.success('Account created successfully! Please check your email to verify your account.');
+      }
     } catch (error: any) {
-      toast.error('Signup failed. Please try again.');
+      toast.error(error.message || 'Signup failed. Please try again.');
       throw error;
     }
   };

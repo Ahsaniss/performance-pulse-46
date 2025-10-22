@@ -4,16 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Copy } from 'lucide-react';
 import { toast } from 'sonner';
-import { useEmployees } from '@/hooks/useEmployees';
+import { supabase } from '@/integrations/supabase/client';
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface AddEmployeeModalProps {
   onClose: () => void;
 }
 
 export const AddEmployeeModal = ({ onClose }: AddEmployeeModalProps) => {
-  const { addEmployee } = useEmployees();
+  const [isLoading, setIsLoading] = useState(false);
+  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -22,7 +24,7 @@ export const AddEmployeeModal = ({ onClose }: AddEmployeeModalProps) => {
     role: 'employee' as 'admin' | 'employee',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name || !formData.email || !formData.department || !formData.position) {
@@ -30,21 +32,90 @@ export const AddEmployeeModal = ({ onClose }: AddEmployeeModalProps) => {
       return;
     }
 
-    // Add employee to store
-    const newEmployee = addEmployee({
-      name: formData.name,
-      email: formData.email,
-      department: formData.department,
-      position: formData.position,
-      role: formData.role,
-    } as any);
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('create-employee', {
+        body: {
+          email: formData.email,
+          full_name: formData.name,
+          department: formData.department,
+          position: formData.position,
+          role: formData.role,
+        }
+      });
 
-    toast.success(`Employee ${formData.name} added successfully!`);
+      if (error) throw error;
+
+      setCredentials({
+        email: formData.email,
+        password: data.temporary_password
+      });
+
+      toast.success('Employee account created successfully!');
+    } catch (error: any) {
+      console.error('Error creating employee:', error);
+      toast.error(error.message || 'Failed to create employee account');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
+  };
+
+  const handleClose = () => {
+    setCredentials(null);
     onClose();
   };
 
+  if (credentials) {
+    return (
+      <AlertDialog open={true} onOpenChange={handleClose}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Employee Account Created</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4">
+              <p>The employee account has been created successfully. Please share these credentials with the employee:</p>
+              
+              <div className="bg-secondary p-4 rounded-md space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Email:</span>
+                  <div className="flex items-center gap-2">
+                    <code className="text-sm">{credentials.email}</code>
+                    <Button size="sm" variant="ghost" onClick={() => copyToClipboard(credentials.email)}>
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Temporary Password:</span>
+                  <div className="flex items-center gap-2">
+                    <code className="text-sm">{credentials.password}</code>
+                    <Button size="sm" variant="ghost" onClick={() => copyToClipboard(credentials.password)}>
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
+              <p className="text-sm text-muted-foreground">
+                The employee should change their password after first login.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button onClick={handleClose}>Done</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    );
+  }
+
   return (
-    <Dialog open={true} onOpenChange={onClose}>
+    <Dialog open={true} onOpenChange={handleClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Add New Employee</DialogTitle>
@@ -116,12 +187,12 @@ export const AddEmployeeModal = ({ onClose }: AddEmployeeModalProps) => {
           </div>
 
           <div className="flex gap-3 justify-end pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
               Cancel
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={isLoading}>
               <UserPlus className="w-4 h-4 mr-2" />
-              Add Employee
+              {isLoading ? 'Creating...' : 'Add Employee'}
             </Button>
           </div>
         </form>
