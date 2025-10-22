@@ -12,7 +12,6 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PerformanceChart } from "@/components/admin/PerformanceChart";
-import { dataStore } from "@/lib/store";
 import { useAttendance } from "@/hooks/useAttendance";
 
 interface Profile {
@@ -144,14 +143,18 @@ const EmployeeDashboard = () => {
     const now = new Date();
     const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     
-    await addAttendance({
-      employeeId: user.id,
-      date: now.toISOString().split('T')[0],
-      checkIn: time,
-      status: 'present',
-    });
-    
-    toast.success(`Checked in at ${time}`);
+    try {
+      await addAttendance({
+        employee_id: user.id,
+        date: now.toISOString().split('T')[0],
+        check_in: time,
+        status: 'present',
+      });
+      
+      toast.success(`Checked in at ${time}`);
+    } catch (error) {
+      console.error('Check-in error:', error);
+    }
   };
 
   const handleCheckOut = async () => {
@@ -160,12 +163,18 @@ const EmployeeDashboard = () => {
     const now = new Date();
     const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     
-    // Update existing attendance record
-    await dataStore.updateAttendance(todayAttendance.id, {
-      checkOut: time,
-    });
-    
-    toast.success(`Checked out at ${time}`);
+    try {
+      const { error } = await supabase
+        .from('attendance')
+        .update({ check_out: time })
+        .eq('id', todayAttendance.id);
+
+      if (error) throw error;
+      toast.success(`Checked out at ${time}`);
+    } catch (error) {
+      console.error('Check-out error:', error);
+      toast.error('Failed to check out');
+    }
   };
 
   const handleTaskStatusUpdate = (taskId: string, newStatus: string) => {
@@ -224,19 +233,19 @@ const EmployeeDashboard = () => {
             <div>
               <h3 className="text-lg font-semibold mb-1">Attendance</h3>
               <p className="text-sm text-muted-foreground">
-                {checkedIn 
-                  ? `Checked in at ${todayAttendance.checkIn}` 
+                {todayAttendance?.check_in 
+                  ? `Checked in at ${todayAttendance.check_in}` 
                   : 'Not checked in yet'}
-                {todayAttendance?.checkOut && ` | Checked out at ${todayAttendance.checkOut}`}
+                {todayAttendance?.check_out && ` | Checked out at ${todayAttendance.check_out}`}
               </p>
             </div>
             <Button 
-              onClick={checkedIn ? handleCheckOut : handleCheckIn} 
+              onClick={todayAttendance?.check_in ? handleCheckOut : handleCheckIn} 
               size="lg"
-              disabled={!!todayAttendance?.checkOut}
+              disabled={!!todayAttendance?.check_out}
             >
               <Clock className="w-5 h-5 mr-2" />
-              {todayAttendance?.checkOut ? 'Checked Out' : checkedIn ? 'Check Out' : 'Check In'}
+              {todayAttendance?.check_out ? 'Checked Out' : todayAttendance?.check_in ? 'Check Out' : 'Check In'}
             </Button>
           </div>
         </Card>

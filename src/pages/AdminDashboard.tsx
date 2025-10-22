@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LogOut, LayoutDashboard, Users, Search, MessageSquare, Calendar, FileText, Plus } from "lucide-react";
-import { mockTasks, mockMeetings } from "@/lib/mockData";
 import { EmployeeGrid } from "@/components/admin/EmployeeGrid";
 import { EmployeeModal } from "@/components/admin/EmployeeModal";
 import { SendMessageModal } from "@/components/admin/SendMessageModal";
@@ -16,12 +15,15 @@ import { AdminOverview } from "@/components/admin/AdminOverview";
 import { AddEmployeeModal } from "@/components/admin/AddEmployeeModal";
 import { AddEvaluationModal } from "@/components/admin/AddEvaluationModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useEmployees } from "@/hooks/useEmployees";
+import { useProfiles } from "@/hooks/useProfiles";
+import { useMeetings } from "@/hooks/useMeetings";
+import { supabase } from "@/integrations/supabase/client";
 
 export const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { employees } = useEmployees();
+  const { profiles, loading } = useProfiles();
+  const { meetings } = useMeetings(user?.id);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -29,11 +31,57 @@ export const AdminDashboard = () => {
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [showAddEvaluationModal, setShowAddEvaluationModal] = useState(false);
+  const [stats, setStats] = useState({
+    completedTasksToday: 0,
+    avgPerformance: '0.0'
+  });
+
+  useEffect(() => {
+    fetchStats();
+  }, [profiles]);
+
+  const fetchStats = async () => {
+    try {
+      // Fetch completed tasks today
+      const today = new Date().toISOString().split('T')[0];
+      const { data: tasks } = await supabase
+        .from('tasks')
+        .select('status')
+        .eq('status', 'completed')
+        .gte('updated_at', today);
+
+      // Calculate average performance
+      const avgScore = profiles.length > 0
+        ? (profiles.reduce((acc, p) => acc + (p.performance_score || 0), 0) / profiles.length).toFixed(1)
+        : '0.0';
+
+      setStats({
+        completedTasksToday: tasks?.length || 0,
+        avgPerformance: avgScore
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
 
   const handleLogout = () => {
     logout();
-    navigate('/signin');
+    navigate('/auth');
   };
+
+  // Convert profiles to employee format for EmployeeGrid
+  const employees = profiles.map(p => ({
+    id: p.id,
+    name: p.full_name,
+    email: p.email,
+    avatar: p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.email}`,
+    department: p.department || 'General',
+    position: p.position || 'Employee',
+    role: 'employee' as const,
+    joinDate: p.join_date || new Date().toISOString(),
+    status: (p.status || 'active') as 'active' | 'inactive' | 'on-leave',
+    performanceScore: p.performance_score || 0
+  }));
 
   const filteredEmployees = employees.filter(emp =>
     emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -41,12 +89,8 @@ export const AdminDashboard = () => {
     emp.position.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalEmployees = employees.length;
-  const completedTasksToday = mockTasks.filter(t => t.status === 'completed').length;
-  const avgPerformance = employees.length > 0 
-    ? (employees.reduce((acc, emp) => acc + emp.performanceScore, 0) / totalEmployees).toFixed(1)
-    : '0.0';
-  const upcomingMeetings = mockMeetings.filter(m => m.status === 'scheduled').length;
+  const totalEmployees = profiles.length;
+  const upcomingMeetings = meetings.filter(m => m.status === 'scheduled').length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -93,8 +137,8 @@ export const AdminDashboard = () => {
             {/* Summary Cards */}
             <AdminOverview 
               totalEmployees={totalEmployees}
-              completedTasksToday={completedTasksToday}
-              avgPerformance={avgPerformance}
+              completedTasksToday={stats.completedTasksToday}
+              avgPerformance={stats.avgPerformance}
               upcomingMeetings={upcomingMeetings}
             />
 

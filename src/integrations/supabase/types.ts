@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance: {
+        Row: {
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          date: string
+          employee_id: string
+          id: string
+          status: string
+        }
+        Insert: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          date: string
+          employee_id: string
+          id?: string
+          status?: string
+        }
+        Update: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          date?: string
+          employee_id?: string
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       evaluations: {
         Row: {
           created_at: string
@@ -47,6 +77,74 @@ export type Database = {
           outcome_summary?: string | null
           satisfaction_score?: number
           training_applied?: number
+        }
+        Relationships: []
+      }
+      meeting_attendees: {
+        Row: {
+          attendee_id: string
+          created_at: string
+          id: string
+          meeting_id: string
+        }
+        Insert: {
+          attendee_id: string
+          created_at?: string
+          id?: string
+          meeting_id: string
+        }
+        Update: {
+          attendee_id?: string
+          created_at?: string
+          id?: string
+          meeting_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_attendees_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetings: {
+        Row: {
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          link: string | null
+          scheduled_by: string
+          status: string
+          time: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          description?: string | null
+          id?: string
+          link?: string | null
+          scheduled_by: string
+          status?: string
+          time: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          link?: string | null
+          scheduled_by?: string
+          status?: string
+          time?: string
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -91,6 +189,10 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          join_date: string | null
+          performance_score: number | null
+          position: string | null
+          status: string | null
           updated_at: string
         }
         Insert: {
@@ -100,6 +202,10 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          join_date?: string | null
+          performance_score?: number | null
+          position?: string | null
+          status?: string | null
           updated_at?: string
         }
         Update: {
@@ -109,6 +215,10 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          join_date?: string | null
+          performance_score?: number | null
+          position?: string | null
+          status?: string | null
           updated_at?: string
         }
         Relationships: []
