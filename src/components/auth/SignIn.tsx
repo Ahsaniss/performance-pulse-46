@@ -59,14 +59,13 @@ export const SignIn = () => {
           </span>
         </div>
 
-        {/* Default Admin Credentials Info */}
+        {/* Info box */}
         <div className="mb-6 p-4 bg-primary/10 rounded-lg border border-primary/20">
           <div className="flex items-center gap-2 mb-2">
             <Shield className="w-4 h-4 text-primary" />
-            <p className="text-sm font-semibold text-primary">Default Admin Credentials</p>
+            <p className="text-sm font-semibold text-primary">Getting Started</p>
           </div>
-          <p className="text-xs text-muted-foreground">Email: <span className="font-mono">admin@performancepulse.com</span></p>
-          <p className="text-xs text-muted-foreground">Password: <span className="font-mono">admin123</span></p>
+          <p className="text-xs text-muted-foreground">Sign up to create your admin or employee account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
