@@ -5,15 +5,17 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_CLIENT_KEY = SUPABASE_PUBLISHABLE_KEY || SUPABASE_ANON_KEY;
 
 // Validate env vars early and provide a clear error message
 const missingMsg =
-  'Missing Supabase configuration: VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY must be set. ' +
+  'Missing Supabase configuration: VITE_SUPABASE_URL and either VITE_SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_ANON_KEY must be set. ' +
   'Make sure these variables are defined in your .env and exposed to the client (VITE_ prefix) for Vite.';
 
 // Create the real client when possible; otherwise export a Proxy that defers error until use
-export const supabase: SupabaseClient<Database> = (SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY)
-  ? createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase: SupabaseClient<Database> = (SUPABASE_URL && SUPABASE_CLIENT_KEY)
+  ? createClient<Database>(SUPABASE_URL, SUPABASE_CLIENT_KEY, {
       auth: {
         storage: localStorage,
         persistSession: true,
@@ -39,7 +41,7 @@ export const supabase: SupabaseClient<Database> = (SUPABASE_URL && SUPABASE_PUBL
     ) as unknown as SupabaseClient<Database>;
 
 // Warn in dev so it's obvious the variables aren't set without crashing on import
-if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+if (!SUPABASE_URL || !SUPABASE_CLIENT_KEY) {
   // eslint-disable-next-line no-console
   console.warn(missingMsg);
 }
