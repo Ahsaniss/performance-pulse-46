@@ -182,7 +182,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (error) throw error;
 
       if (data.user) {
-        toast.success('Account created successfully! Please check your email to verify your account.');
+        // Assign the selected role (admin or employee)
+        if (role) {
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .upsert({ 
+              user_id: data.user.id, 
+              role: role 
+            });
+
+          if (roleError) {
+            console.error('Role assignment error:', roleError);
+          }
+        }
+
+        toast.success('Account created successfully!');
       }
     } catch (error: any) {
       toast.error(error.message || 'Signup failed. Please try again.');
