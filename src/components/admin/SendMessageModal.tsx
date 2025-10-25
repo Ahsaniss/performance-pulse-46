@@ -11,10 +11,11 @@ import { toast } from 'sonner';
 
 interface SendMessageModalProps {
   onClose: () => void;
+  preSelectedEmployeeId?: string;
 }
 
-export const SendMessageModal = ({ onClose }: SendMessageModalProps) => {
-  const [recipient, setRecipient] = useState<string>('all');
+export const SendMessageModal = ({ onClose, preSelectedEmployeeId }: SendMessageModalProps) => {
+  const [recipient, setRecipient] = useState<string>(preSelectedEmployeeId || 'all');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
 

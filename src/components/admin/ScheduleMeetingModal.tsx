@@ -15,15 +15,16 @@ import { cn } from '@/lib/utils';
 
 interface ScheduleMeetingModalProps {
   onClose: () => void;
+  preSelectedEmployeeId?: string;
 }
 
-export const ScheduleMeetingModal = ({ onClose }: ScheduleMeetingModalProps) => {
+export const ScheduleMeetingModal = ({ onClose, preSelectedEmployeeId }: ScheduleMeetingModalProps) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState('');
   const [link, setLink] = useState('');
-  const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
+  const [selectedAttendees, setSelectedAttendees] = useState<string[]>(preSelectedEmployeeId ? [preSelectedEmployeeId] : []);
 
   const toggleAttendee = (employeeId: string) => {
     setSelectedAttendees(prev =>

@@ -3,7 +3,8 @@ import { useParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, TrendingUp, Calendar, ArrowLeft, Mail, LogOut, User, AlertCircle, Bell, MessageSquare } from "lucide-react";
+import { CheckCircle2, Clock, TrendingUp, Calendar, ArrowLeft, Mail, LogOut, User, AlertCircle, MessageSquare } from "lucide-react";
+import { NotificationBell } from "@/components/employee/NotificationBell";
 import { PersonalPerformanceChart } from "@/components/employee/PersonalPerformanceChart";
 import { TaskList } from "@/components/employee/TaskList";
 import { useAuth } from "@/contexts/AuthContext";
@@ -210,6 +211,7 @@ const EmployeeDashboard = () => {
               <h1 className="text-2xl font-bold">Employee Dashboard</h1>
             </div>
             <div className="flex items-center gap-4">
+              {user?.id && <NotificationBell userId={user.id} />}
               <div className="text-right">
                 <p className="text-sm font-semibold">{user?.full_name}</p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
