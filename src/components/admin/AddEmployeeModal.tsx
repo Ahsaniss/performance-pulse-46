@@ -24,6 +24,110 @@ export const AddEmployeeModal = ({ onClose }: AddEmployeeModalProps) => {
     role: 'employee' as 'admin' | 'employee',
   });
 
+  type EdgeFunctionError = {
+	message: string;
+	details?: string;
+	context?: { response?: Response; body?: unknown };
+};
+
+const EDGE_ERROR_PREFIX = 'Edge function error';
+
+const isEdgeFunctionError = (error: unknown): error is EdgeFunctionError =>
+	typeof error === 'object' &&
+	error !== null &&
+	typeof (error as EdgeFunctionError).message === 'string' &&
+	(error as EdgeFunctionError).message.includes('Edge Function returned a non-2xx status code');
+
+const parseEdgeErrorPayload = (payload: unknown): string | null => {
+	if (!payload || typeof payload !== 'object') return null;
+	const candidate = payload as Record<string, unknown>;
+
+	const directMessageFields = [
+		'message',
+		'error',
+		'error_message',
+		'error_description',
+		'description',
+	];
+	for (const field of directMessageFields) {
+		const value = candidate[field];
+		if (typeof value === 'string' && value.trim()) return value.trim();
+	}
+
+	const nestedFields = ['error', 'data', 'details', 'payload'];
+	for (const nestedKey of nestedFields) {
+		const nestedValue = candidate[nestedKey];
+		if (nestedValue && typeof nestedValue === 'object') {
+			const nested = parseEdgeErrorPayload(nestedValue);
+			if (nested) return nested;
+		}
+	}
+
+	return null;
+};
+
+const extractEdgeFunctionError = async (edgeError: EdgeFunctionError) => {
+	if (edgeError.details?.trim()) return edgeError.details.trim();
+
+	const body = edgeError.context?.body;
+	if (body) {
+		try {
+			if (typeof body === 'string') {
+				const trimmed = body.trim();
+				if (!trimmed) return null;
+				try {
+					const parsed = JSON.parse(trimmed);
+					const message = parseEdgeErrorPayload(parsed);
+					if (message) return message;
+				} catch {
+					return trimmed;
+				}
+			} else if (typeof body === 'object') {
+				const parsed = parseEdgeErrorPayload(body);
+				if (parsed) return parsed;
+			}
+		} catch {
+			/* ignore */
+		}
+	}
+
+	const response = edgeError.context?.response;
+	if (!response) return null;
+
+	const headerMessage = response.headers?.get?.('x-supabase-edge-error');
+	if (headerMessage?.trim()) return headerMessage.trim();
+
+	try {
+		const clone = response.clone();
+		const contentType = clone.headers.get('content-type') ?? '';
+
+		if (contentType.includes('application/json')) {
+			const json = await clone.json();
+			const parsed = parseEdgeErrorPayload(json);
+			if (parsed) return parsed;
+		}
+
+		const text = await clone.text();
+		if (text.trim()) return text.trim();
+	} catch {
+		try {
+			const fallback = await response.text();
+			if (fallback.trim()) return fallback.trim();
+		} catch {
+			/* ignore */
+		}
+	}
+
+	return null;
+};
+
+const formatEdgeFunctionFallback = (edgeError: EdgeFunctionError) => {
+	const status = edgeError.context?.response?.status;
+	const statusText = edgeError.context?.response?.statusText;
+	const suffix = status ? ` (${status}${statusText ? ` ${statusText}` : ''})` : '';
+	return `${EDGE_ERROR_PREFIX}${suffix}: ${edgeError.message}`;
+};
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -54,9 +158,20 @@ export const AddEmployeeModal = ({ onClose }: AddEmployeeModalProps) => {
 
       toast.success('Employee account created successfully!');
     } catch (error: any) {
-      console.error('Error creating employee:', error);
-      toast.error(error.message || 'Failed to create employee account');
-    } finally {
+		let errorMessage = error?.message || 'Failed to create employee account';
+		if (isEdgeFunctionError(error)) {
+			const detail = await extractEdgeFunctionError(error);
+			errorMessage = detail ?? formatEdgeFunctionFallback(error);
+			console.error('create-employee edge error', {
+				message: errorMessage,
+				status: error.context?.response?.status,
+				error,
+			});
+		} else {
+			console.error('Error creating employee:', error);
+		}
+		toast.error(errorMessage);
+	} finally {
       setIsLoading(false);
     }
   };

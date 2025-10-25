@@ -38,7 +38,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string, role: UserRole) => Promise<User | null>;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: (role?: UserRole) => Promise<void>;
   signup: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -59,6 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Check for existing Supabase session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
+        const pendingRole = normalizeRole(sessionStorage.getItem('pending_role'));
         // Fetch user role from database
         const { data: roleData } = await supabase
           .from('user_roles')
@@ -66,14 +67,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           .eq('user_id', session.user.id)
           .single();
 
+        const resolvedRole = normalizeRole(roleData?.role) ?? pendingRole ?? getPersistedRole() ?? 'employee';
+        if (!roleData?.role && pendingRole) {
+          try {
+            await supabase.from('user_roles').upsert({
+              user_id: session.user.id,
+              role: pendingRole,
+            });
+          } catch (rolePersistError) {
+            console.error('Failed to persist pending role:', rolePersistError);
+          } finally {
+            sessionStorage.removeItem('pending_role');
+          }
+        }
+
         // Fetch user profile
         const { data: profileData } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single();
-
-        const resolvedRole = normalizeRole(roleData?.role) ?? getPersistedRole() ?? 'employee';
 
         const supabaseUser: User = {
           id: session.user.id,
@@ -93,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        // Defer database calls to avoid deadlock
+        const pendingRole = normalizeRole(sessionStorage.getItem('pending_role'));
         setTimeout(async () => {
           // Fetch user role from database
           const { data: roleData } = await supabase
@@ -102,14 +115,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             .eq('user_id', session.user.id)
             .single();
 
+          const resolvedRole = normalizeRole(roleData?.role) ?? pendingRole ?? getPersistedRole() ?? 'employee';
+          if (!roleData?.role && pendingRole) {
+            try {
+              await supabase.from('user_roles').upsert({
+                user_id: session.user.id,
+                role: pendingRole,
+              });
+            } catch (rolePersistError) {
+              console.error('Failed to persist pending role:', rolePersistError);
+            } finally {
+              sessionStorage.removeItem('pending_role');
+            }
+          }
+
           // Fetch user profile
           const { data: profileData } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
-
-          const resolvedRole = normalizeRole(roleData?.role) ?? getPersistedRole() ?? 'employee';
 
           const supabaseUser: User = {
             id: session.user.id,
@@ -132,17 +157,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (role?: UserRole) => {
     try {
+      if (role) {
+        sessionStorage.setItem('pending_role', role);
+      }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: window.location.origin,
-        },
+        options: { redirectTo: window.location.origin },
       });
       if (error) throw error;
       toast.success('Redirecting to Google Sign In...');
     } catch (error: any) {
+      sessionStorage.removeItem('pending_role');
       toast.error(error.message || 'Google Sign In failed');
       throw error;
     }

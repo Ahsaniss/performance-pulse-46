@@ -15,38 +15,48 @@ export interface Meeting {
   attendees?: string[];
 }
 
+const isUuid = (value?: string) => Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
+
 export const useMeetings = (userId?: string) => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (userId) {
-      fetchMeetings();
-
-      // Subscribe to realtime changes
-      const channel = supabase
-        .channel('meetings-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'meetings'
-          },
-          () => {
-            fetchMeetings();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
+    if (!userId || !isUuid(userId)) {
+      setMeetings([]);
+      setLoading(false);
+      return;
     }
+
+    fetchMeetings();
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel('meetings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'meetings'
+        },
+        () => {
+          fetchMeetings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [userId]);
 
   const fetchMeetings = async () => {
-    if (!userId) return;
+    if (!userId || !isUuid(userId)) {
+      setMeetings([]);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
 
@@ -154,6 +164,11 @@ export const useMeetings = (userId?: string) => {
     link?: string;
     attendee_ids: string[];
   }) => {
+    if (!isUuid(meetingData.scheduled_by)) {
+      toast.error('Meetings cannot be created while using the dev admin account.');
+      return;
+    }
+
     try {
       const { data: meeting, error: meetingError } = await supabase
         .from('meetings')

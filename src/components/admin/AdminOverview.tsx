@@ -4,6 +4,7 @@ import { Users, CheckCircle2, TrendingUp, Calendar } from 'lucide-react';
 interface AdminOverviewProps {
   totalEmployees: number;
   completedTasksToday: number;
+  pendingTasks: number;
   avgPerformance: string;
   upcomingMeetings: number;
 }
@@ -11,6 +12,7 @@ interface AdminOverviewProps {
 export const AdminOverview = ({ 
   totalEmployees, 
   completedTasksToday, 
+  pendingTasks, 
   avgPerformance, 
   upcomingMeetings 
 }: AdminOverviewProps) => {
@@ -36,6 +38,7 @@ export const AdminOverview = ({
           <div>
             <p className="text-sm text-muted-foreground">Completed Today</p>
             <p className="text-2xl font-bold">{completedTasksToday}</p>
+            <p className="text-xs text-muted-foreground">Pending: {pendingTasks}</p>
           </div>
         </div>
       </Card>

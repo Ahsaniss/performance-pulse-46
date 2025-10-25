@@ -2,13 +2,15 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Employee } from '@/types';
 import { Mail, MapPin, Star } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface EmployeeGridProps {
   employees: Employee[];
   onEmployeeClick: (employeeId: string) => void;
+  onEmployeeNavigate?: (employeeId: string) => void;
 }
 
-export const EmployeeGrid = ({ employees, onEmployeeClick }: EmployeeGridProps) => {
+export const EmployeeGrid = ({ employees, onEmployeeClick, onEmployeeNavigate }: EmployeeGridProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -61,6 +63,19 @@ export const EmployeeGrid = ({ employees, onEmployeeClick }: EmployeeGridProps) 
                 <span className="font-semibold">{employee.performanceScore}</span>
               </div>
             </div>
+            {onEmployeeNavigate && (
+              <Button
+                variant="link"
+                size="sm"
+                className="mt-2"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEmployeeNavigate(employee.id);
+                }}
+              >
+                View Dashboard
+              </Button>
+            )}
           </div>
         </Card>
       ))}

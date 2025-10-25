@@ -1,107 +1,136 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+/// <reference types="https://deno.land/x/deno@v1.37.0/cli/tsc/dts/lib.deno.d.ts" />
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
+
+const respond = (status: number, body: Record<string, unknown>) =>
+  new Response(JSON.stringify(body), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    status,
+  });
+
+const generateTempPassword = () => {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  const bytes = crypto.getRandomValues(new Uint32Array(12));
+  const core = Array.from(bytes, (value) => alphabet[value % alphabet.length]).join('');
+  return `${core}A1!`;
+};
+
+type Payload = {
+  email?: string;
+  full_name?: string;
+  department?: string;
+  position?: string;
+  role?: 'admin' | 'employee';
+};
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
+    const url = Deno.env.get('SUPABASE_URL');
+    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    const { email, full_name, department, position, role } = await req.json()
+    if (!url || !key) {
+      console.error('Missing Supabase service credentials');
+      return respond(500, { error: 'Supabase service is not configured' });
+    }
 
-    console.log('Creating employee:', { email, full_name, department, position, role })
+    const supabaseAdmin = createClient(url, key, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
-    // Generate a temporary password
-    const tempPassword = Math.random().toString(36).slice(-8) + 'A1!'
+    let payload: Payload;
+    try {
+      payload = await req.json();
+    } catch {
+      return respond(400, { error: 'Invalid JSON payload' });
+    }
 
-    // Create the user in Supabase Auth
+    const { email, full_name, department, position, role } = payload;
+
+    const missing = ['email', 'full_name', 'department', 'position'].filter(
+      (field) => !(payload as Record<string, unknown>)?.[field],
+    );
+    if (missing.length) {
+      return respond(400, { error: `Missing required fields: ${missing.join(', ')}` });
+    }
+
+    if (typeof email !== 'string' || !email.includes('@')) {
+      return respond(400, { error: 'A valid email address is required' });
+    }
+
+    const { data: existingUser, error: lookupError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+    if (!lookupError && existingUser?.user) {
+      return respond(409, { error: 'User already exists with this email' });
+    }
+
+    const temporaryPassword = generateTempPassword();
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      password: tempPassword,
+      password: temporaryPassword,
       email_confirm: true,
       user_metadata: {
         full_name,
         department,
         position,
-      }
-    })
+      },
+    });
 
-    if (authError) {
-      console.error('Auth error:', authError)
-      throw authError
+    if (authError || !authData?.user) {
+      console.error('Auth admin createUser error:', authError);
+      return respond(400, { error: authError?.message ?? 'Failed to create user in auth' });
     }
 
-    console.log('User created in auth:', authData.user.id)
-
-    // Wait for trigger to create profile, then update with additional info
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    const userId = authData.user.id;
 
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .update({
-        department,
-        position,
-      })
-      .eq('id', authData.user.id)
-
+      .upsert(
+        {
+          id: userId,
+          email,
+          full_name,
+          department,
+          position,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' },
+      );
     if (profileError) {
-      console.error('Profile update error:', profileError)
-      // Don't throw - profile will be created by trigger, just won't have dept/position yet
+      console.error('Profile upsert error:', profileError);
+      return respond(500, { error: 'Failed to create employee profile', details: profileError.message });
     }
 
-    // Assign role (employee role already assigned by trigger, but we might want admin)
-    if (role && role !== 'employee') {
-      const { error: roleError } = await supabaseAdmin
-        .from('user_roles')
-        .update({ role })
-        .eq('user_id', authData.user.id)
-
-      if (roleError) {
-        console.error('Role update error:', roleError)
-      }
+    const targetRole = role === 'admin' ? 'admin' : 'employee';
+    const { error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .upsert(
+        { user_id: userId, role: targetRole },
+        { onConflict: 'user_id' },
+      );
+    if (roleError) {
+      console.error('Role upsert error:', roleError);
+      return respond(500, { error: 'Failed to assign user role', details: roleError.message });
     }
 
-    console.log('Role assigned successfully')
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        user_id: authData.user.id,
-        email,
-        temporary_password: tempPassword,
-        message: 'Employee account created successfully'
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      },
-    )
+    return respond(200, {
+      success: true,
+      user_id: userId,
+      email,
+      temporary_password: temporaryPassword,
+      message: 'Employee account created successfully',
+    });
   } catch (error) {
-    console.error('Error creating employee:', error)
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
-    return new Response(
-      JSON.stringify({
-        error: errorMessage
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      },
-    )
+    console.error('Unexpected error creating employee:', error);
+    return respond(500, {
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error),
+    });
   }
-})
+});

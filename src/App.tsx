@@ -23,7 +23,7 @@ function App() {
             <Route path="/signup" element={<SignUp />} />
             
             <Route
-              path="/admin/*"
+              path="/admin"
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminDashboard />
@@ -32,7 +32,16 @@ function App() {
             />
             
             <Route
-              path="/employee/*"
+              path="/employee"
+              element={
+                <ProtectedRoute>
+                  <EmployeeDashboard />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/employee/:employeeId"
               element={
                 <ProtectedRoute>
                   <EmployeeDashboard />
@@ -43,6 +52,7 @@ function App() {
             <Route path="*" element={<Navigate to="/signin" replace />} />
           </Routes>
         </Router>
+        <Toaster />
         <Sonner position="top-right" />
       </AuthProvider>
     </QueryClientProvider>

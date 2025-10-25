@@ -1,38 +1,49 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, User, Mail } from 'lucide-react';
+import { Shield, Mail } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export const SignIn = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'admin' | 'employee'>('employee');
-  const { login, loginWithGoogle } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { login, loginWithGoogle, user, isLoading } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate(user.role === 'admin' ? '/admin' : '/employee');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      setIsSubmitting(true);
       const authenticatedUser = await login(email, password, role);
-      // navigate based on the actual role stored in the user record (DB),
-      // not the role selected in the form (to avoid mismatches)
       const target = authenticatedUser?.role === 'admin' ? '/admin' : '/employee';
       navigate(target);
     } catch (error) {
       console.error('Login failed:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
     try {
-      await loginWithGoogle();
+      setIsSubmitting(true);
+      await loginWithGoogle(role);
     } catch (error) {
       console.error('Google sign-in failed:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -50,6 +61,7 @@ export const SignIn = () => {
           variant="outline" 
           className="w-full mb-4"
           size="lg"
+          disabled={isSubmitting || isLoading}
         >
           <Mail className="w-5 h-5 mr-2" />
           Continue with Google
@@ -113,7 +125,9 @@ export const SignIn = () => {
               </Button>
             </div>
           </div>
-          <Button type="submit" className="w-full">Sign In</Button>
+          <Button type="submit" className="w-full" disabled={isSubmitting || isLoading}>
+            {isSubmitting ? 'Signing In...' : 'Sign In'}
+          </Button>
           <p className="text-center text-sm text-muted-foreground">
             Don't have an account?{' '}
             <a href="/signup" className="text-primary hover:underline">

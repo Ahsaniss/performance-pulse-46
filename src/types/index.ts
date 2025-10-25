@@ -11,17 +11,21 @@ export interface Employee {
   performanceScore: number;
 }
 
+export type TaskStatus = 'pending' | 'in-progress' | 'in_progress' | 'completed';
+export type TaskPriority = 'low' | 'medium' | 'high';
+
 export interface Task {
   id: string;
   title: string;
   description: string;
   assignedTo: string;
   assignedBy: string;
-  status: 'pending' | 'in-progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
+  status: TaskStatus;
+  priority: TaskPriority;
   deadline: string;
   createdAt: string;
   completedAt?: string;
+  updatedAt?: string;
 }
 
 export interface Message {
@@ -33,6 +37,7 @@ export interface Message {
   timestamp: string;
   read: boolean;
   type: 'individual' | 'broadcast';
+  attachments?: string[];
 }
 
 export interface Meeting {
@@ -60,6 +65,11 @@ export interface Evaluation {
     teamwork: number;
     communication: number;
   };
+  meetingsHeld?: number;
+  trainingApplied?: number;
+  outcomeSummary?: string;
+  previousWork?: string[];
+  satisfactionScore?: number;
 }
 
 export interface Attendance {
@@ -69,4 +79,14 @@ export interface Attendance {
   checkIn?: string;
   checkOut?: string;
   status: 'present' | 'absent' | 'late' | 'on-leave';
+}
+
+export interface Notification {
+  id: string;
+  employeeId: string | 'all';
+  title: string;
+  body: string;
+  createdAt: string;
+  read: boolean;
+  type: 'task' | 'message' | 'meeting' | 'evaluation';
 }

@@ -1,3 +1,4 @@
+// @deno-types="https://esm.sh/@supabase/supabase-js@2.39.3/dist/module/index.d.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
 const corsHeaders = {
@@ -46,7 +47,7 @@ Deno.serve(async (req) => {
 
     const attendeesByMeeting = new Map<string, string[]>()
 
-    ;(attendeeLinks ?? []).forEach(({ meeting_id, attendee_id }) => {
+    (attendeeLinks ?? []).forEach(({ meeting_id, attendee_id }) => {
       const list = attendeesByMeeting.get(meeting_id) ?? []
       list.push(attendee_id)
       attendeesByMeeting.set(meeting_id, list)
@@ -67,10 +68,10 @@ Deno.serve(async (req) => {
       JSON.stringify({ success: true, data: filteredMeetings }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error listing meetings:', error)
     return new Response(
-      JSON.stringify({ success: false, error: error?.message ?? 'Unexpected error' }),
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unexpected error' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 },
     )
   }

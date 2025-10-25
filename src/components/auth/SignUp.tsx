@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
@@ -11,13 +11,25 @@ export const SignUp = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<'admin' | 'employee'>('employee');
-  const { signup } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { signup, user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate(user.role === 'admin' ? '/admin' : '/employee');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await signup(email, password, name, role);
-    navigate(role === 'admin' ? '/admin' : '/employee');
+    try {
+      setIsSubmitting(true);
+      await signup(email, password, name, role);
+      navigate(role === 'admin' ? '/admin' : '/employee');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -76,7 +88,9 @@ export const SignUp = () => {
               </Button>
             </div>
           </div>
-          <Button type="submit" className="w-full">Sign Up</Button>
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? 'Creating account...' : 'Sign Up'}
+          </Button>
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{' '}
             <a href="/signin" className="text-primary hover:underline">
