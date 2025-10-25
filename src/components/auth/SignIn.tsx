@@ -18,8 +18,11 @@ export const SignIn = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login(email, password, role);
-      navigate(role === 'admin' ? '/admin' : '/employee');
+      const authenticatedUser = await login(email, password, role);
+      // navigate based on the actual role stored in the user record (DB),
+      // not the role selected in the form (to avoid mismatches)
+      const target = authenticatedUser?.role === 'admin' ? '/admin' : '/employee';
+      navigate(target);
     } catch (error) {
       console.error('Login failed:', error);
     }

@@ -4,6 +4,27 @@ import { toast } from 'sonner';
 
 type UserRole = 'admin' | 'employee' | null;
 
+const normalizeRole = (role: string | null | undefined): UserRole => {
+  if (!role) return null;
+  const lower = role.trim().toLowerCase();
+  if (lower === 'admin' || lower === 'employee') {
+    return lower as UserRole;
+  }
+  return null;
+};
+
+const getPersistedRole = (): UserRole => {
+  try {
+    const savedUser = localStorage.getItem('user');
+    if (!savedUser) return null;
+    const parsed = JSON.parse(savedUser);
+    return normalizeRole(parsed?.role);
+  } catch (error) {
+    console.error('Failed to read persisted role:', error);
+    return null;
+  }
+};
+
 interface User {
   id: string;
   email: string;
@@ -16,7 +37,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string, role: UserRole) => Promise<void>;
+  login: (email: string, password: string, role: UserRole) => Promise<User | null>;
   loginWithGoogle: () => Promise<void>;
   signup: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
   logout: () => void;
@@ -52,10 +73,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           .eq('id', session.user.id)
           .single();
 
+        const resolvedRole = normalizeRole(roleData?.role) ?? getPersistedRole() ?? 'employee';
+
         const supabaseUser: User = {
           id: session.user.id,
           email: session.user.email!,
-          role: roleData?.role || 'employee',
+          role: resolvedRole,
           name: profileData?.full_name || session.user.user_metadata.full_name || session.user.email!.split('@')[0],
           avatar: profileData?.avatar_url || session.user.user_metadata.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
           department: profileData?.department || session.user.user_metadata.department,
@@ -86,10 +109,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             .eq('id', session.user.id)
             .single();
 
+          const resolvedRole = normalizeRole(roleData?.role) ?? getPersistedRole() ?? 'employee';
+
           const supabaseUser: User = {
             id: session.user.id,
             email: session.user.email!,
-            role: roleData?.role || 'employee',
+            role: resolvedRole,
             name: profileData?.full_name || session.user.user_metadata.full_name || session.user.email!.split('@')[0],
             avatar: profileData?.avatar_url || session.user.user_metadata.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
             department: profileData?.department || session.user.user_metadata.department,
@@ -124,7 +149,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (email: string, password: string, role: UserRole) => {
+    // Development-only: allow a default admin account configured via Vite env vars
+    // (with sensible fallbacks) so local testing works even if env isnt set.
     try {
+      const isDevEnv = Boolean(import.meta.env.DEV ?? import.meta.env.MODE !== 'production');
+      if (isDevEnv) {
+        const devEmail = (import.meta.env.VITE_DEV_ADMIN_EMAIL as string | undefined) ?? 'dev-admin@example.com';
+        const devPassword = (import.meta.env.VITE_DEV_ADMIN_PASSWORD as string | undefined) ?? 'some-secret-password';
+        if (devEmail && devPassword && email === devEmail && password === devPassword) {
+          const devUser: User = {
+            id: 'dev-admin',
+            email: devEmail,
+            role: 'admin',
+            name: 'Dev Admin',
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${devEmail}`,
+          };
+          setUser(devUser);
+          localStorage.setItem('user', JSON.stringify(devUser));
+          toast.success(`Signed in as dev admin (${devUser.email})`);
+          return devUser;
+        }
+      }
+
+      // normal login flow
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -147,10 +194,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           .eq('id', data.user.id)
           .single();
 
+        const resolvedRole = normalizeRole(roleData?.role) ?? normalizeRole(role) ?? getPersistedRole() ?? 'employee';
+
+        if (!normalizeRole(roleData?.role) && resolvedRole) {
+          try {
+            await supabase.from('user_roles').upsert({
+              user_id: data.user.id,
+              role: resolvedRole,
+            });
+          } catch (roleUpdateError) {
+            console.error('Failed to persist user role:', roleUpdateError);
+          }
+        }
+
         const supabaseUser: User = {
           id: data.user.id,
           email: data.user.email!,
-          role: roleData?.role || 'employee',
+          role: resolvedRole,
           name: profileData?.full_name || data.user.user_metadata.full_name || data.user.email!.split('@')[0],
           avatar: profileData?.avatar_url || data.user.user_metadata.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user.email}`,
           department: profileData?.department || data.user.user_metadata.department,
@@ -159,7 +219,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(supabaseUser);
         localStorage.setItem('user', JSON.stringify(supabaseUser));
         toast.success(`Welcome back, ${supabaseUser.name}!`);
+        return supabaseUser;
       }
+      return null;
     } catch (error: any) {
       toast.error(error.message || 'Login failed. Please try again.');
       throw error;
