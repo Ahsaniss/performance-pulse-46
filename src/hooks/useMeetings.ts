@@ -48,39 +48,98 @@ export const useMeetings = (userId?: string) => {
   const fetchMeetings = async () => {
     if (!userId) return;
 
+    setLoading(true);
+
     try {
-      // Fetch meetings and their attendees
-      const { data: meetingsData, error: meetingsError } = await supabase
+      const fields = `
+        id,
+        title,
+        description,
+        scheduled_by,
+        date,
+        time,
+        link,
+        status,
+        created_at
+      `;
+
+      const normalize = (meeting: any, attendees: string[] = []): Meeting => ({
+        id: meeting.id,
+        title: meeting.title,
+        description: meeting.description,
+        scheduled_by: meeting.scheduled_by,
+        date: meeting.date,
+        time: meeting.time,
+        link: meeting.link,
+        status: meeting.status,
+        created_at: meeting.created_at,
+        attendees,
+      });
+
+      const { data: scheduled, error: scheduledError } = await supabase
         .from('meetings')
-        .select('*')
+        .select(fields)
+        .eq('scheduled_by', userId)
         .order('date', { ascending: true });
 
-      if (meetingsError) throw meetingsError;
+      if (scheduledError) throw scheduledError;
 
-      // Fetch attendees for each meeting
-      const meetingsWithAttendees = await Promise.all(
-        (meetingsData || []).map(async (meeting) => {
-          const { data: attendeesData } = await supabase
-            .from('meeting_attendees')
-            .select('attendee_id')
-            .eq('meeting_id', meeting.id);
+      const { data: attendeeRows, error: attendeeError } = await supabase
+        .from('meeting_attendees')
+        .select('meeting_id')
+        .eq('attendee_id', userId);
 
-          return {
-            ...meeting,
-            attendees: attendeesData?.map(a => a.attendee_id) || []
-          };
-        })
+      if (attendeeError) throw attendeeError;
+
+      let attendeeMeetings: any[] = [];
+      const meetingIds = (attendeeRows ?? [])
+        .map((row) => row.meeting_id)
+        .filter(Boolean) as string[];
+
+      if (meetingIds.length) {
+        const { data, error } = await supabase
+          .from('meetings')
+          .select(fields)
+          .in('id', meetingIds)
+          .order('date', { ascending: true });
+
+        if (error) throw error;
+        attendeeMeetings = data ?? [];
+      }
+
+      const merged = new Map<string, any>();
+      [...(scheduled ?? []), ...attendeeMeetings].forEach((meeting) => {
+        merged.set(meeting.id, meeting);
+      });
+
+      const allMeetingIds = Array.from(merged.keys());
+      const attendeesByMeeting = new Map<string, string[]>();
+
+      if (allMeetingIds.length) {
+        const { data: attendeeDetails, error: attendeeDetailsError } = await supabase
+          .from('meeting_attendees')
+          .select('meeting_id, attendee_id')
+          .in('meeting_id', allMeetingIds);
+
+        if (attendeeDetailsError) throw attendeeDetailsError;
+
+        (attendeeDetails ?? []).forEach((row) => {
+          const list = attendeesByMeeting.get(row.meeting_id) ?? [];
+          list.push(row.attendee_id);
+          attendeesByMeeting.set(row.meeting_id, list);
+        });
+      }
+
+      setMeetings(
+        allMeetingIds.map((meetingId) =>
+          normalize(merged.get(meetingId), attendeesByMeeting.get(meetingId) ?? [])
+        )
       );
-
-      // Filter meetings where user is scheduled_by or an attendee
-      const userMeetings = meetingsWithAttendees.filter(
-        m => m.scheduled_by === userId || m.attendees.includes(userId)
-      );
-
-      setMeetings(userMeetings);
     } catch (error: any) {
-      toast.error('Failed to load meetings');
-      console.error(error);
+      const message = error?.message || 'Failed to load meetings';
+      toast.error(message);
+      console.error('Failed to load meetings:', error);
+      setMeetings([]);
     } finally {
       setLoading(false);
     }
