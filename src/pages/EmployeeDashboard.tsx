@@ -191,11 +191,11 @@ const EmployeeDashboard = () => {
 
 	const fetchMeetings = useCallback(async () => {
 		if (!targetUserId) return;
-		const { data, error } = (await supabase
+		const { data, error } = await supabase
 			.from('meetings')
 			.select('*')
-			.eq('user_id', targetUserId)
-			.order('date', { ascending: true })) as { data: any[] | null; error: any };
+			.or(`scheduled_by.eq.${targetUserId},attendee_id.eq.${targetUserId}`)
+			.order('date', { ascending: true });
 
 		if (error) throw error;
 		setMeetings((data ?? []).map(mapMeeting));

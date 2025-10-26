@@ -45,9 +45,9 @@ Deno.serve(async (req) => {
 
     if (attendeeError) throw attendeeError
 
-    const attendeesByMeeting = new Map<string, string[]>()
+    const attendeesByMeeting = new Map<string, string[]>();
 
-    (attendeeLinks ?? []).forEach(({ meeting_id, attendee_id }) => {
+    (attendeeLinks ?? []).forEach(({ meeting_id, attendee_id }: { meeting_id: string; attendee_id: string }) => {
       const list = attendeesByMeeting.get(meeting_id) ?? []
       list.push(attendee_id)
       attendeesByMeeting.set(meeting_id, list)

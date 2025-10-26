@@ -1,4 +1,4 @@
-/// <reference types="https://deno.land/x/deno@v1.37.0/cli/tsc/dts/lib.deno.d.ts" />
+// @deno-types="https://esm.sh/@supabase/supabase-js@2.39.3/dist/module/index.d.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
@@ -65,8 +65,8 @@ Deno.serve(async (req) => {
       return respond(400, { error: 'A valid email address is required' });
     }
 
-    const { data: existingUser, error: lookupError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
-    if (!lookupError && existingUser?.user) {
+    const { data: existingUsers, error: lookupError } = await supabaseAdmin.auth.admin.listUsers();
+    if (!lookupError && existingUsers?.users?.some((u) => u.email === email)) {
       return respond(409, { error: 'User already exists with this email' });
     }
 
