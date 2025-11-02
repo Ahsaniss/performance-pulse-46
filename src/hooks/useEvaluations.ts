@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+// Mock data store for frontend-only mode
+const STORAGE_KEY = 'evaluations_data';
 
 export interface Evaluation {
   id: string;
@@ -21,26 +23,6 @@ export const useEvaluations = (employeeId?: string) => {
   useEffect(() => {
     if (employeeId) {
       fetchEvaluations();
-
-      const channel = supabase
-        .channel('evaluations-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'evaluations',
-            filter: `employee_id=eq.${employeeId}`
-          },
-          () => {
-            fetchEvaluations();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
   }, [employeeId]);
 
@@ -48,14 +30,14 @@ export const useEvaluations = (employeeId?: string) => {
     if (!employeeId) return;
 
     try {
-      const { data, error } = await supabase
-        .from('evaluations')
-        .select('*')
-        .eq('employee_id', employeeId)
-        .order('evaluation_date', { ascending: false });
-
-      if (error) throw error;
-      setEvaluations(data || []);
+      // Load from localStorage
+      const storedData = localStorage.getItem(STORAGE_KEY);
+      const allData = storedData ? JSON.parse(storedData) : [];
+      const filtered = allData.filter((e: Evaluation) => e.employee_id === employeeId)
+        .sort((a: Evaluation, b: Evaluation) => 
+          new Date(b.evaluation_date).getTime() - new Date(a.evaluation_date).getTime()
+        );
+      setEvaluations(filtered);
     } catch (error: any) {
       console.error('Failed to load evaluations:', error);
     } finally {
@@ -65,12 +47,11 @@ export const useEvaluations = (employeeId?: string) => {
 
   const deleteEvaluation = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('evaluations')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      // Delete from localStorage
+      const storedData = localStorage.getItem(STORAGE_KEY);
+      const allData = storedData ? JSON.parse(storedData) : [];
+      const updatedData = allData.filter((e: Evaluation) => e.id !== id);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedData));
       toast.success('Evaluation deleted successfully');
       fetchEvaluations();
     } catch (error: any) {

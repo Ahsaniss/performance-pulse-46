@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+// Mock data store for frontend-only mode
+// TODO: Replace with your backend API calls
+const STORAGE_KEY = 'meetings_data';
+const ATTENDEES_KEY = 'meeting_attendees_data';
 
 export interface Meeting {
   id: string;
@@ -12,144 +16,53 @@ export interface Meeting {
   link: string | null;
   status: string;
   created_at: string;
-  attendees?: string[];
+  updated_at: string;
+  attendees?: Array<{ attendee_id: string }>;
 }
-
-const isUuid = (value?: string) => Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 
 export const useMeetings = (userId?: string) => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!userId || !isUuid(userId)) {
-      setMeetings([]);
-      setLoading(false);
-      return;
+    if (userId) {
+      fetchMeetings();
     }
-
-    fetchMeetings();
-
-    // Subscribe to realtime changes
-    const channel = supabase
-      .channel('meetings-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'meetings'
-        },
-        () => {
-          fetchMeetings();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [userId]);
 
   const fetchMeetings = async () => {
-    if (!userId || !isUuid(userId)) {
-      setMeetings([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
+    if (!userId) return;
 
     try {
-      const fields = `
-        id,
-        title,
-        description,
-        scheduled_by,
-        date,
-        time,
-        link,
-        status,
-        created_at
-      `;
+      // TODO: Replace with your backend API
+      // const response = await fetch(`/api/meetings?userId=${userId}`);
+      // const data = await response.json();
+      
+      const storedMeetings = localStorage.getItem(STORAGE_KEY);
+      const storedAttendees = localStorage.getItem(ATTENDEES_KEY);
+      
+      const allMeetings = storedMeetings ? JSON.parse(storedMeetings) : [];
+      const allAttendees = storedAttendees ? JSON.parse(storedAttendees) : [];
 
-      const normalize = (meeting: any, attendees: string[] = []): Meeting => ({
-        id: meeting.id,
-        title: meeting.title,
-        description: meeting.description,
-        scheduled_by: meeting.scheduled_by,
-        date: meeting.date,
-        time: meeting.time,
-        link: meeting.link,
-        status: meeting.status,
-        created_at: meeting.created_at,
-        attendees,
+      const userMeetings = allMeetings.filter((m: Meeting) => {
+        const isScheduler = m.scheduled_by === userId;
+        const isAttendee = allAttendees.some(
+          (a: any) => a.meeting_id === m.id && a.attendee_id === userId
+        );
+        return isScheduler || isAttendee;
       });
 
-      const { data: scheduled, error: scheduledError } = await supabase
-        .from('meetings')
-        .select(fields)
-        .eq('scheduled_by', userId)
-        .order('date', { ascending: true });
+      const meetingsWithAttendees = userMeetings.map((m: Meeting) => ({
+        ...m,
+        attendees: allAttendees
+          .filter((a: any) => a.meeting_id === m.id)
+          .map((a: any) => ({ attendee_id: a.attendee_id })),
+      }));
 
-      if (scheduledError) throw scheduledError;
-
-      const { data: attendeeRows, error: attendeeError } = await supabase
-        .from('meeting_attendees')
-        .select('meeting_id')
-        .eq('attendee_id', userId);
-
-      if (attendeeError) throw attendeeError;
-
-      let attendeeMeetings: any[] = [];
-      const meetingIds = (attendeeRows ?? [])
-        .map((row) => row.meeting_id)
-        .filter(Boolean) as string[];
-
-      if (meetingIds.length) {
-        const { data, error } = await supabase
-          .from('meetings')
-          .select(fields)
-          .in('id', meetingIds)
-          .order('date', { ascending: true });
-
-        if (error) throw error;
-        attendeeMeetings = data ?? [];
-      }
-
-      const merged = new Map<string, any>();
-      [...(scheduled ?? []), ...attendeeMeetings].forEach((meeting) => {
-        merged.set(meeting.id, meeting);
-      });
-
-      const allMeetingIds = Array.from(merged.keys());
-      const attendeesByMeeting = new Map<string, string[]>();
-
-      if (allMeetingIds.length) {
-        const { data: attendeeDetails, error: attendeeDetailsError } = await supabase
-          .from('meeting_attendees')
-          .select('meeting_id, attendee_id')
-          .in('meeting_id', allMeetingIds);
-
-        if (attendeeDetailsError) throw attendeeDetailsError;
-
-        (attendeeDetails ?? []).forEach((row) => {
-          const list = attendeesByMeeting.get(row.meeting_id) ?? [];
-          list.push(row.attendee_id);
-          attendeesByMeeting.set(row.meeting_id, list);
-        });
-      }
-
-      setMeetings(
-        allMeetingIds.map((meetingId) =>
-          normalize(merged.get(meetingId), attendeesByMeeting.get(meetingId) ?? [])
-        )
-      );
+      setMeetings(meetingsWithAttendees);
     } catch (error: any) {
-      const message = error?.message || 'Failed to load meetings';
-      toast.error(message);
       console.error('Failed to load meetings:', error);
-      setMeetings([]);
+      toast.error('Failed to load meetings');
     } finally {
       setLoading(false);
     }
@@ -157,50 +70,56 @@ export const useMeetings = (userId?: string) => {
 
   const createMeeting = async (meetingData: {
     title: string;
-    description: string;
+    description?: string;
     scheduled_by: string;
     date: string;
     time: string;
     link?: string;
+    status?: string;
     attendee_ids: string[];
   }) => {
-    if (!isUuid(meetingData.scheduled_by)) {
-      toast.error('Meetings cannot be created while using the dev admin account.');
-      return;
-    }
-
     try {
-      const { data: meeting, error: meetingError } = await supabase
-        .from('meetings')
-        .insert({
-          title: meetingData.title,
-          description: meetingData.description,
-          scheduled_by: meetingData.scheduled_by,
-          date: meetingData.date,
-          time: meetingData.time,
-          link: meetingData.link,
-          status: 'scheduled'
-        })
-        .select()
-        .single();
+      // TODO: Replace with your backend API
+      // await fetch('/api/meetings', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(meetingData)
+      // });
+      
+      const { attendee_ids, ...meetingInfo } = meetingData;
 
-      if (meetingError) throw meetingError;
+      const storedMeetings = localStorage.getItem(STORAGE_KEY);
+      const allMeetings = storedMeetings ? JSON.parse(storedMeetings) : [];
+      
+      const newMeeting: Meeting = {
+        id: `meeting_${Date.now()}`,
+        ...meetingInfo,
+        description: meetingInfo.description || null,
+        link: meetingInfo.link || null,
+        status: meetingInfo.status || 'scheduled',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      
+      allMeetings.push(newMeeting);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(allMeetings));
 
-      // Add attendees
-      if (meetingData.attendee_ids.length > 0) {
-        const attendees = meetingData.attendee_ids.map(id => ({
-          meeting_id: meeting.id,
-          attendee_id: id
+      if (attendee_ids && attendee_ids.length > 0) {
+        const storedAttendees = localStorage.getItem(ATTENDEES_KEY);
+        const allAttendees = storedAttendees ? JSON.parse(storedAttendees) : [];
+        
+        const newAttendees = attendee_ids.map(attendee_id => ({
+          id: `attendee_${Date.now()}_${attendee_id}`,
+          meeting_id: newMeeting.id,
+          attendee_id,
+          created_at: new Date().toISOString(),
         }));
-
-        const { error: attendeesError } = await supabase
-          .from('meeting_attendees')
-          .insert(attendees);
-
-        if (attendeesError) throw attendeesError;
+        
+        allAttendees.push(...newAttendees);
+        localStorage.setItem(ATTENDEES_KEY, JSON.stringify(allAttendees));
       }
 
-      toast.success('Meeting scheduled successfully');
+      toast.success('Meeting created successfully');
       fetchMeetings();
     } catch (error: any) {
       toast.error('Failed to create meeting');

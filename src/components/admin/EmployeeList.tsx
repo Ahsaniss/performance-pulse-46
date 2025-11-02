@@ -1,42 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Mail } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-
-interface Employee {
-  id: string;
-  full_name: string;
-  email: string;
-  department: string | null;
-}
+import { useProfiles } from "@/hooks/useProfiles";
 
 export const EmployeeList = () => {
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { profiles: employees, loading } = useProfiles();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
-
-  const fetchEmployees = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, department')
-        .order('full_name');
-
-      if (error) throw error;
-      setEmployees(data || []);
-    } catch (error: any) {
-      toast.error('Failed to load employees');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();

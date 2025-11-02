@@ -6,9 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Mail } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMessages } from "@/hooks/useMessages";
 
 interface Employee {
   id: string;
@@ -26,44 +26,24 @@ export function MessageDialog({ employees }: MessageDialogProps) {
   const [recipient, setRecipient] = useState("all");
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const { sendMessage } = useMessages(user?.id);
 
   const handleSendMessage = async () => {
-    if (!subject || !content) {
+    if (!subject || !content || !user?.id) {
       toast.error("Please fill in all fields");
       return;
     }
 
     setLoading(true);
     try {
-      if (recipient === "all") {
-        // Broadcast message
-        const { error } = await supabase
-          .from('messages')
-          .insert({
-            from_user: user?.id,
-            to_user: null,
-            is_broadcast: true,
-            subject,
-            content,
-          });
+      await sendMessage({
+        from_user: user.id,
+        to_user: recipient === "all" ? null : recipient,
+        subject,
+        content,
+        is_broadcast: recipient === "all",
+      });
 
-        if (error) throw error;
-      } else {
-        // Individual message
-        const { error } = await supabase
-          .from('messages')
-          .insert({
-            from_user: user?.id,
-            to_user: recipient,
-            is_broadcast: false,
-            subject,
-            content,
-          });
-
-        if (error) throw error;
-      }
-
-      toast.success("Message sent successfully!");
       setSubject("");
       setContent("");
       setRecipient("all");

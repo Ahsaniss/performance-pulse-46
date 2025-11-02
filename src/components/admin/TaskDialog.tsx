@@ -38,19 +38,22 @@ export function TaskDialog({ employees, onTaskCreated }: TaskDialogProps) {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .insert({
-          title,
-          description,
-          assigned_to: assignedTo,
-          assigned_by: user?.id,
-          priority,
-          due_date: dueDate || null,
-          status: 'pending',
-        });
-
-      if (error) throw error;
+      // TODO: Replace with backend API
+      const tasksData = localStorage.getItem('tasks_data');
+      const tasks = tasksData ? JSON.parse(tasksData) : [];
+      tasks.push({
+        id: `task_${Date.now()}`,
+        title,
+        description,
+        assigned_to: assignedTo,
+        assigned_by: user?.id,
+        priority,
+        due_date: dueDate || null,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      localStorage.setItem('tasks_data', JSON.stringify(tasks));
 
       toast.success("Task created successfully!");
       setTitle("");

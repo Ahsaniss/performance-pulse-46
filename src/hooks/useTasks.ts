@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+// Mock data store for frontend-only mode
+const STORAGE_KEY = 'tasks_data';
 
 export interface Task {
   id: string;
@@ -22,26 +24,6 @@ export const useTasks = (employeeId?: string) => {
   useEffect(() => {
     if (employeeId) {
       fetchTasks();
-
-      const channel = supabase
-        .channel('tasks-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'tasks',
-            filter: `assigned_to=eq.${employeeId}`
-          },
-          () => {
-            fetchTasks();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
   }, [employeeId]);
 
@@ -49,14 +31,14 @@ export const useTasks = (employeeId?: string) => {
     if (!employeeId) return;
 
     try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('assigned_to', employeeId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTasks(data || []);
+      // Load from localStorage
+      const storedData = localStorage.getItem(STORAGE_KEY);
+      const allData = storedData ? JSON.parse(storedData) : [];
+      const filtered = allData.filter((t: Task) => t.assigned_to === employeeId)
+        .sort((a: Task, b: Task) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      setTasks(filtered);
     } catch (error: any) {
       console.error('Failed to load tasks:', error);
     } finally {
@@ -66,12 +48,13 @@ export const useTasks = (employeeId?: string) => {
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .update(updates)
-        .eq('id', id);
-
-      if (error) throw error;
+      // Update in localStorage
+      const storedData = localStorage.getItem(STORAGE_KEY);
+      const allData = storedData ? JSON.parse(storedData) : [];
+      const updatedData = allData.map((t: Task) => 
+        t.id === id ? { ...t, ...updates, updated_at: new Date().toISOString() } : t
+      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedData));
       toast.success('Task updated successfully');
       fetchTasks();
     } catch (error: any) {
@@ -82,12 +65,11 @@ export const useTasks = (employeeId?: string) => {
 
   const deleteTask = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      // Delete from localStorage
+      const storedData = localStorage.getItem(STORAGE_KEY);
+      const allData = storedData ? JSON.parse(storedData) : [];
+      const updatedData = allData.filter((t: Task) => t.id !== id);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedData));
       toast.success('Task deleted successfully');
       fetchTasks();
     } catch (error: any) {

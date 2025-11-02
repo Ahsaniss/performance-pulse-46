@@ -1,49 +1,100 @@
-# Performance Pulse - HRM System
+# Employee Management System - Frontend Only
 
-A comprehensive Human Resource Management System built with React, TypeScript, and modern web technologies. This system provides complete employee management, performance tracking, task assignment, and real-time communication features for organizations.
+A modern, responsive employee management dashboard built with React, TypeScript, and Tailwind CSS.
 
-## 🚀 Features
+## 🎯 Overview
 
-### Admin Dashboard
-- **Employee Management**: Add, view, edit, and manage employee profiles
-- **Task Assignment**: Assign tasks to employees with priorities and deadlines
-- **Performance Evaluations**: Rate employees across multiple categories
-- **Meeting Scheduling**: Schedule and manage team meetings
-- **Messaging System**: Send broadcast or individual messages to employees
-- **Department Analytics**: View department-wise statistics and performance metrics
-- **Attendance Tracking**: Monitor employee check-in/check-out records
+This is a **frontend-only** version of an employee management system. All data is stored in **localStorage** for demonstration purposes. You can easily integrate your own backend by replacing the mock data hooks.
 
-### Employee Dashboard
-- **Personal Profile**: View and manage personal information
-- **Task Management**: View assigned tasks and update their status
-- **Performance History**: Track personal evaluations and performance scores
-- **Attendance**: Check-in/check-out functionality with time tracking
-- **Messages**: Receive and read messages from admin
-- **Meeting Calendar**: View scheduled meetings with links
-- **Performance Charts**: Visual representation of performance trends
+## ✨ Features
 
-## 🛠️ Tech Stack
+- **Dashboard Overview**: View key metrics and statistics
+- **Employee Management**: Add, edit, and manage employee profiles
+- **Task Management**: Assign and track tasks
+- **Performance Evaluations**: Conduct and store employee evaluations
+- **Messaging System**: Internal communication between admin and employees
+- **Meeting Scheduler**: Schedule and manage meetings
+- **Attendance Tracking**: Monitor employee attendance
+- **Mock Authentication**: Simple login/signup system using localStorage
 
-- **Frontend Framework**: React 18 with TypeScript
-- **Routing**: React Router DOM
-- **Styling**: Tailwind CSS with shadcn/ui components
-- **State Management**: React Context API
-- **Data Storage**: localStorage (with optional Google Sheets integration)
-- **Icons**: Lucide React
-- **Build Tool**: Vite
-- **Authentication**: Custom authentication with role-based access
+## 🚀 Tech Stack
 
-## 📋 Prerequisites
+- **React 18** - UI framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool
+- **Tailwind CSS** - Styling
+- **Shadcn/ui** - Component library
+- **React Router** - Navigation
+- **Recharts** - Data visualization
+- **Sonner** - Toast notifications
 
-- Node.js 16.x or higher
-- npm or yarn package manager
+## 📦 Installation
 
-## 🚀 Getting Started
-
-### Installation
-
-1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd performance-pulse-46
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
 ```
+
+## 🔌 Backend Integration Points
+
+This frontend is designed to be backend-agnostic. Here are the main integration points where you can connect your own backend:
+
+### 1. Authentication (`src/contexts/AuthContext.tsx`)
+Replace mock authentication with your backend API.
+
+### 2. Data Hooks (All located in `src/hooks/`)
+- `useProfiles.ts` - User profiles
+- `useEmployees.ts` - Employee data
+- `useTasks.ts` - Task management
+- `useEvaluations.ts` - Performance evaluations
+- `useMessages.ts` - Messaging system
+- `useMeetings.ts` - Meeting scheduler
+- `useAttendance.ts` - Attendance tracking
+
+Each hook uses localStorage currently. Replace with your API calls.
+
+## 🎨 Project Structure
+
+```
+src/
+├── components/        # Reusable UI components
+│   ├── admin/        # Admin-specific components
+│   ├── auth/         # Authentication components
+│   ├── employee/     # Employee-specific components
+│   └── ui/          # Base UI components
+├── contexts/         # React contexts
+├── hooks/           # Custom React hooks
+├── lib/             # Utility functions
+├── pages/           # Page components
+└── types/           # TypeScript types
+```
+
+## 🔐 Mock Authentication
+
+Create accounts via signup or use mock data.
+
+## 📝 Notes
+
+- All data is stored in **localStorage**
+- Data persists across browser sessions
+- No backend requests are made
+- Perfect for demos and prototypes
+
+## 🚧 Backend Integration Checklist
+
+- [ ] Replace AuthContext with real authentication
+- [ ] Replace all data hooks with API calls
+- [ ] Add proper error handling
+- [ ] Implement API client/service layer
+- [ ] Set up environment variables
+- [ ] Add request interceptors for auth tokens
+
+## 📄 License
+
+MIT License

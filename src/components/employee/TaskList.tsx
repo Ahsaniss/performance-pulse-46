@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTasks } from "@/hooks/useTasks";
 
 interface Task {
   id: string;
@@ -19,42 +19,11 @@ interface TaskListProps {
 }
 
 export const TaskList = ({ employeeId }: TaskListProps) => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (employeeId) {
-      fetchTasks();
-    }
-  }, [employeeId]);
-
-  const fetchTasks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('assigned_to', employeeId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTasks(data || []);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { tasks, loading, updateTask } = useTasks(employeeId);
 
   const updateTaskStatus = async (taskId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ status: newStatus })
-        .eq('id', taskId);
-
-      if (error) throw error;
-      toast.success('Task updated successfully');
-      fetchTasks();
+      await updateTask(taskId, { status: newStatus });
     } catch (error: any) {
       toast.error('Failed to update task');
     }

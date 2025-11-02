@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+// Mock data store for frontend-only mode
+const STORAGE_KEY = 'profiles_data';
 
 export interface Profile {
   id: string;
@@ -20,37 +22,14 @@ export const useProfiles = () => {
 
   useEffect(() => {
     fetchProfiles();
-
-    // Subscribe to realtime changes
-    const channel = supabase
-      .channel('profiles-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'profiles'
-        },
-        () => {
-          fetchProfiles();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   const fetchProfiles = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('full_name');
-
-      if (error) throw error;
-      setProfiles(data || []);
+      // Load from localStorage
+      const storedData = localStorage.getItem(STORAGE_KEY);
+      const data = storedData ? JSON.parse(storedData) : [];
+      setProfiles(data);
     } catch (error: any) {
       toast.error('Failed to load profiles');
       console.error(error);
@@ -61,12 +40,13 @@ export const useProfiles = () => {
 
   const updateProfile = async (id: string, updates: Partial<Profile>) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', id);
-
-      if (error) throw error;
+      // Update in localStorage
+      const storedData = localStorage.getItem(STORAGE_KEY);
+      const data = storedData ? JSON.parse(storedData) : [];
+      const updatedData = data.map((profile: Profile) => 
+        profile.id === id ? { ...profile, ...updates } : profile
+      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedData));
       toast.success('Profile updated successfully');
       fetchProfiles();
     } catch (error: any) {

@@ -3,8 +3,6 @@ import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 
 interface NotificationBellProps {
@@ -24,97 +22,8 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (!userId) return;
-
-    // Subscribe to new messages
-    const messagesChannel = supabase
-      .channel('new-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `to_user=eq.${userId}`
-        },
-        (payload) => {
-          const newNotification: Notification = {
-            id: payload.new.id,
-            type: 'message',
-            title: 'New Message',
-            content: payload.new.subject,
-            created_at: payload.new.created_at,
-          };
-          setNotifications(prev => [newNotification, ...prev]);
-          setUnreadCount(prev => prev + 1);
-          toast.success('New message received!', {
-            description: payload.new.subject,
-          });
-        }
-      )
-      .subscribe();
-
-    // Subscribe to new tasks
-    const tasksChannel = supabase
-      .channel('new-tasks')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'tasks',
-          filter: `assigned_to=eq.${userId}`
-        },
-        (payload) => {
-          const newNotification: Notification = {
-            id: payload.new.id,
-            type: 'task',
-            title: 'New Task Assigned',
-            content: payload.new.title,
-            created_at: payload.new.created_at,
-          };
-          setNotifications(prev => [newNotification, ...prev]);
-          setUnreadCount(prev => prev + 1);
-          toast.success('New task assigned!', {
-            description: payload.new.title,
-          });
-        }
-      )
-      .subscribe();
-
-    // Subscribe to broadcast messages
-    const broadcastChannel = supabase
-      .channel('broadcast-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: 'is_broadcast=eq.true'
-        },
-        (payload) => {
-          const newNotification: Notification = {
-            id: payload.new.id,
-            type: 'message',
-            title: 'Broadcast Message',
-            content: payload.new.subject,
-            created_at: payload.new.created_at,
-          };
-          setNotifications(prev => [newNotification, ...prev]);
-          setUnreadCount(prev => prev + 1);
-          toast.success('New broadcast message!', {
-            description: payload.new.subject,
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(messagesChannel);
-      supabase.removeChannel(tasksChannel);
-      supabase.removeChannel(broadcastChannel);
-    };
+    // TODO: Implement real-time notifications with your backend
+    // For now, notifications are disabled in frontend-only mode
   }, [userId]);
 
   const clearNotifications = () => {
