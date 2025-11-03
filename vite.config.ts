@@ -25,6 +25,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    exclude: ["recharts"],
+    exclude: ["recharts", "es-toolkit"],
   },
 }));
