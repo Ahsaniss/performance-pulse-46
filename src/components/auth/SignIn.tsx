@@ -52,6 +52,15 @@ export const SignIn = () => {
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
           <p className="text-muted-foreground">Sign in to Performance Pulse</p>
+          
+          {/* Default credentials info */}
+          <div className="mt-4 p-3 bg-primary/10 rounded-lg text-sm text-left">
+            <p className="font-semibold text-primary mb-2">Default Credentials:</p>
+            <div className="space-y-1 text-xs">
+              <p>👤 Admin: <span className="font-mono">admin@test.com</span> / <span className="font-mono">admin123</span></p>
+              <p>👤 Employee: <span className="font-mono">employee@test.com</span> / <span className="font-mono">employee123</span></p>
+            </div>
+          </div>
         </div>
         
         {/* Google Sign In */}

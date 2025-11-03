@@ -77,7 +77,28 @@ src/
 
 ## 🔐 Mock Authentication
 
-Create accounts via signup or use mock data.
+This project uses localStorage-based mock authentication for frontend-only operation.
+
+**Default Test Accounts:**
+
+For quick access, use these pre-configured accounts:
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | `admin@test.com` | `admin123` |
+| Employee | `employee@test.com` | `employee123` |
+
+**Creating Your Own Account:**
+1. Click "Sign Up" on the authentication page
+2. Enter your email, password, and full name
+3. Select your role (Admin or Employee)
+4. Your account will be stored in browser localStorage
+
+**Signing In:**
+- Use the credentials from above or your own created account
+- Make sure to select the correct role (Admin/Employee)
+
+**Note:** All data is stored in your browser's localStorage and will be lost if you clear your browser data.
 
 ## 📝 Notes
 

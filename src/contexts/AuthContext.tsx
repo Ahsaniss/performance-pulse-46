@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
+import { initializeMockUsers, getMockUsers } from '@/lib/mockAuth';
 
 // Mock authentication for frontend-only mode
 type UserRole = 'admin' | 'employee' | null;
@@ -30,9 +31,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session in localStorage
+    // Initialize default users and check for existing session
     const initAuth = () => {
       try {
+        // Initialize default mock users
+        initializeMockUsers();
+        
         const storedUser = localStorage.getItem('mockUser');
         if (storedUser) {
           setUser(JSON.parse(storedUser));
@@ -50,8 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string, role: UserRole) => {
     try {
       // TODO: Replace with your backend authentication API
-      const usersData = localStorage.getItem('mockUsers');
-      const users = usersData ? JSON.parse(usersData) : [];
+      const users = getMockUsers();
       
       const foundUser = users.find((u: any) => u.email === email && u.password === password && u.role === role);
       
@@ -71,7 +74,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(userObj);
       localStorage.setItem('mockUser', JSON.stringify(userObj));
       
-      toast.success('Logged in successfully');
+      toast.success(`Logged in as ${role}`);
     } catch (error: any) {
       toast.error(error.message);
       throw error;
