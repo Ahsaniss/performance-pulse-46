@@ -15,6 +15,8 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "es-toolkit/compat/get": path.resolve(__dirname, "./src/shims/es-toolkit-get.js"),
+      "es-toolkit/compat/get.js": path.resolve(__dirname, "./src/shims/es-toolkit-get.js"),
     },
   },
   build: {
