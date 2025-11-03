@@ -17,7 +17,6 @@ import { AddEvaluationModal } from "@/components/admin/AddEvaluationModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useMeetings } from "@/hooks/useMeetings";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const AdminDashboard = () => {
@@ -41,27 +40,28 @@ export const AdminDashboard = () => {
 
   const fetchStats = useCallback(async () => {
     try {
+      // TODO: Replace with backend API
+      const tasksData = localStorage.getItem('tasks_data');
+      const tasks = tasksData ? JSON.parse(tasksData) : [];
+      
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const todayIso = todayStart.toISOString();
-
-      const [{ data: completed }, { data: pending }] = await Promise.all([
-        supabase
-          .from('tasks')
-          .select('id, status, updated_at')
-          .eq('status', 'completed')
-          .gte('updated_at', todayIso),
-        supabase
-          .from('tasks')
-          .select('id, status')
-          .neq('status', 'completed'),
-      ]);
+      
+      const completedToday = tasks.filter((t: any) => {
+        if (t.status !== 'completed' || !t.updated_at) return false;
+        const updatedDate = new Date(t.updated_at);
+        return updatedDate >= todayStart;
+      });
+      
+      const pending = tasks.filter((t: any) => t.status !== 'completed');
+      
       const avgScore = profiles.length > 0
         ? (profiles.reduce((acc, p) => acc + (p.performance_score || 0), 0) / profiles.length).toFixed(1)
         : '0.0';
+      
       setStats({
-        completedTasksToday: completed?.length || 0,
-        pendingTasks: pending?.length || 0,
+        completedTasksToday: completedToday.length,
+        pendingTasks: pending.length,
         avgPerformance: avgScore,
       });
     } catch (error) {
@@ -71,16 +71,6 @@ export const AdminDashboard = () => {
 
   useEffect(() => {
     fetchStats();
-  }, [fetchStats]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel('admin-dashboard-tasks')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => fetchStats())
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [fetchStats]);
 
   const handleLogout = () => {
@@ -114,21 +104,20 @@ export const AdminDashboard = () => {
   const handleExportReports = async () => {
     try {
       setIsExporting(true);
-      const [tasksRes, evalRes] = await Promise.all([
-        supabase.from('tasks').select('id, assigned_to, status, priority, deadline, completed_at'),
-        supabase.from('evaluations').select('id, employee_id, score, date, meetings_held, training_applied, created_at'),
-      ]);
-      const tasks = tasksRes.data;
-      const evaluations = evalRes.data;
-      const tasksList = (tasks ?? []) as any[];
-      const evalList = (evaluations ?? []) as any[];
+      // TODO: Replace with backend API
+      const tasksData = localStorage.getItem('tasks_data');
+      const evaluationsData = localStorage.getItem('evaluations_data');
+      
+      const tasks = tasksData ? JSON.parse(tasksData) : [];
+      const evaluations = evaluationsData ? JSON.parse(evaluationsData) : [];
+      
       const rows = employees.map((emp) => {
-        const empTasks = tasksList.filter((task) => task.assigned_to === emp.id);
-        const completedCount = empTasks.filter((task) => task.status === 'completed').length;
+        const empTasks = tasks.filter((task: any) => task.assigned_to === emp.id);
+        const completedCount = empTasks.filter((task: any) => task.status === 'completed').length;
         const pendingCount = empTasks.length - completedCount;
-        const latestEvaluation = evalList
-          .filter((evaluation) => evaluation.employee_id === emp.id)
-          .sort((a, b) => new Date(b.date || b.created_at || '').getTime() - new Date(a.date || a.created_at || '').getTime())[0];
+        const latestEvaluation = evaluations
+          .filter((evaluation: any) => evaluation.employee_id === emp.id)
+          .sort((a: any, b: any) => new Date(b.date || b.created_at || '').getTime() - new Date(a.date || a.created_at || '').getTime())[0];
         return {
           Name: emp.name,
           Department: emp.department,

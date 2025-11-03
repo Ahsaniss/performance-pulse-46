@@ -26,9 +26,8 @@ export const SignIn = () => {
     e.preventDefault();
     try {
       setIsSubmitting(true);
-      const authenticatedUser = await login(email, password, role);
-      const target = authenticatedUser?.role === 'admin' ? '/admin' : '/employee';
-      navigate(target);
+      await login(email, password, role);
+      // Navigation will be handled by useEffect when user state updates
     } catch (error) {
       console.error('Login failed:', error);
     } finally {
@@ -39,7 +38,7 @@ export const SignIn = () => {
   const handleGoogleSignIn = async () => {
     try {
       setIsSubmitting(true);
-      await loginWithGoogle(role);
+      await loginWithGoogle();
     } catch (error) {
       console.error('Google sign-in failed:', error);
     } finally {

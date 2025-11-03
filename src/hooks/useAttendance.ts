@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export interface Attendance {
@@ -12,6 +11,8 @@ export interface Attendance {
   created_at: string;
 }
 
+const STORAGE_KEY = 'attendance_data';
+
 export const useAttendance = (employeeId?: string) => {
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,27 +20,6 @@ export const useAttendance = (employeeId?: string) => {
   useEffect(() => {
     if (employeeId) {
       fetchAttendance();
-
-      // Subscribe to realtime changes
-      const channel = supabase
-        .channel('attendance-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'attendance',
-            filter: `employee_id=eq.${employeeId}`
-          },
-          () => {
-            fetchAttendance();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
   }, [employeeId]);
 
@@ -47,14 +27,11 @@ export const useAttendance = (employeeId?: string) => {
     if (!employeeId) return;
 
     try {
-      const { data, error } = await supabase
-        .from('attendance')
-        .select('*')
-        .eq('employee_id', employeeId)
-        .order('date', { ascending: false });
-
-      if (error) throw error;
-      setAttendance(data || []);
+      // TODO: Replace with your backend API
+      const storedData = localStorage.getItem(STORAGE_KEY);
+      const allAttendance = storedData ? JSON.parse(storedData) : [];
+      const filtered = allAttendance.filter((a: Attendance) => a.employee_id === employeeId);
+      setAttendance(filtered);
     } catch (error: any) {
       console.error('Failed to load attendance:', error);
     } finally {
@@ -70,11 +47,22 @@ export const useAttendance = (employeeId?: string) => {
     status: string;
   }) => {
     try {
-      const { error } = await supabase
-        .from('attendance')
-        .insert(attendanceData);
+      // TODO: Replace with your backend API
+      const storedData = localStorage.getItem(STORAGE_KEY);
+      const allAttendance = storedData ? JSON.parse(storedData) : [];
+      
+      const newRecord: Attendance = {
+        id: `attendance_${Date.now()}`,
+        employee_id: attendanceData.employee_id,
+        date: attendanceData.date,
+        check_in: attendanceData.check_in || null,
+        check_out: attendanceData.check_out || null,
+        status: attendanceData.status,
+        created_at: new Date().toISOString(),
+      };
 
-      if (error) throw error;
+      allAttendance.push(newRecord);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(allAttendance));
       fetchAttendance();
     } catch (error: any) {
       toast.error('Failed to record attendance');
@@ -85,12 +73,15 @@ export const useAttendance = (employeeId?: string) => {
 
   const updateAttendance = async (id: string, updates: Partial<Attendance>) => {
     try {
-      const { error } = await supabase
-        .from('attendance')
-        .update(updates)
-        .eq('id', id);
-
-      if (error) throw error;
+      // TODO: Replace with your backend API
+      const storedData = localStorage.getItem(STORAGE_KEY);
+      const allAttendance = storedData ? JSON.parse(storedData) : [];
+      
+      const updatedAttendance = allAttendance.map((a: Attendance) =>
+        a.id === id ? { ...a, ...updates } : a
+      );
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedAttendance));
       fetchAttendance();
     } catch (error: any) {
       toast.error('Failed to update attendance');

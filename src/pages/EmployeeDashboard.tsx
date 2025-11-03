@@ -8,7 +8,6 @@ import { NotificationBell } from "@/components/employee/NotificationBell";
 import { PersonalPerformanceChart } from "@/components/employee/PersonalPerformanceChart";
 import { TaskList } from "@/components/employee/TaskList";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -131,85 +130,75 @@ const EmployeeDashboard = () => {
 		[]
 	);
 
-	useEffect(() => {
-		if (!targetUserId) return;
-
-		const channel = supabase
-			.channel('messages')
-			.on(
-				'postgres_changes',
-				{ event: 'INSERT', schema: 'public', table: 'messages', filter: `to_user=eq.${targetUserId}` },
-				(payload) => {
-					if (payload.new) {
-						setMessages((prev) => [mapMessage(payload.new), ...prev]);
-						toast.success('New message received!');
-					}
-				}
-			)
-			.subscribe();
-
-		return () => {
-			supabase.removeChannel(channel);
-		};
-	}, [targetUserId, mapMessage]);
-
 	const fetchProfile = useCallback(async () => {
 		if (!targetUserId) return;
-		const { data, error } = await supabase
-			.from('profiles')
-			.select('*')
-			.eq('id', targetUserId)
-			.single();
-		if (error) throw error;
-		setProfile(data);
+		// TODO: Replace with your backend API
+		try {
+			const profilesData = localStorage.getItem('profiles_data');
+			const profiles = profilesData ? JSON.parse(profilesData) : [];
+			const found = profiles.find((p: any) => p.id === targetUserId);
+			if (found) {
+				setProfile(found);
+			}
+		} catch (error) {
+			console.error('Error fetching profile:', error);
+		}
 	}, [targetUserId]);
 
 	const fetchTasks = useCallback(async () => {
 		if (!targetUserId) return;
-		const { data, error } = await supabase
-			.from('tasks')
-			.select('*')
-			.eq('assigned_to', targetUserId)
-			.order('created_at', { ascending: false });
-
-		if (error) throw error;
-		setTasks((data ?? []).map(mapTask));
+		// TODO: Replace with your backend API
+		try {
+			const tasksData = localStorage.getItem('tasks_data');
+			const allTasks = tasksData ? JSON.parse(tasksData) : [];
+			const userTasks = allTasks.filter((t: any) => t.assigned_to === targetUserId);
+			setTasks(userTasks.map(mapTask));
+		} catch (error) {
+			console.error('Error fetching tasks:', error);
+		}
 	}, [targetUserId, mapTask]);
 
 	const fetchMessages = useCallback(async () => {
 		if (!targetUserId) return;
-		const { data, error } = await supabase
-			.from('messages')
-			.select('*')
-			.or(`to_user.eq.${targetUserId},and(is_broadcast.eq.true,to_user.is.null)`)
-			.order('created_at', { ascending: false })
-			.limit(5);
-
-		if (error) throw error;
-		setMessages((data ?? []).map(mapMessage));
+		// TODO: Replace with your backend API
+		try {
+			const messagesData = localStorage.getItem('messages_data');
+			const allMessages = messagesData ? JSON.parse(messagesData) : [];
+			const userMessages = allMessages.filter((m: any) => 
+				m.to_user === targetUserId || (m.is_broadcast && !m.to_user)
+			);
+			setMessages(userMessages.map(mapMessage).slice(0, 5));
+		} catch (error) {
+			console.error('Error fetching messages:', error);
+		}
 	}, [targetUserId, mapMessage]);
 
 	const fetchMeetings = useCallback(async () => {
 		if (!targetUserId) return;
-		const { data, error } = await supabase
-			.from('meetings')
-			.select('*')
-			.or(`scheduled_by.eq.${targetUserId},attendee_id.eq.${targetUserId}`)
-			.order('date', { ascending: true });
-
-		if (error) throw error;
-		setMeetings((data ?? []).map(mapMeeting));
+		// TODO: Replace with your backend API
+		try {
+			const meetingsData = localStorage.getItem('meetings_data');
+			const allMeetings = meetingsData ? JSON.parse(meetingsData) : [];
+			const userMeetings = allMeetings.filter((m: any) => 
+				m.scheduled_by === targetUserId || (m.attendees && m.attendees.includes(targetUserId))
+			);
+			setMeetings(userMeetings.map(mapMeeting));
+		} catch (error) {
+			console.error('Error fetching meetings:', error);
+		}
 	}, [targetUserId, mapMeeting]);
+	
 	const fetchEvaluations = useCallback(async () => {
 		if (!targetUserId) return;
-		const { data, error } = await supabase
-			.from('evaluations')
-			.select('*')
-			.eq('employee_id', targetUserId)
-			.order('date', { ascending: false });
-
-		if (error) throw error;
-		setEvaluations((data ?? []).map(mapEvaluation));
+		// TODO: Replace with your backend API
+		try {
+			const evaluationsData = localStorage.getItem('evaluations_data');
+			const allEvaluations = evaluationsData ? JSON.parse(evaluationsData) : [];
+			const userEvaluations = allEvaluations.filter((e: any) => e.employee_id === targetUserId);
+			setEvaluations(userEvaluations.map(mapEvaluation));
+		} catch (error) {
+			console.error('Error fetching evaluations:', error);
+		}
 	}, [targetUserId, mapEvaluation]);
 
 	useEffect(() => {
@@ -252,12 +241,14 @@ const EmployeeDashboard = () => {
 		const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 		
 		try {
-			const { error } = await supabase
-				.from('attendance')
-				.update({ check_out: time })
-				.eq('id', todayAttendance.id);
-
-			if (error) throw error;
+			// TODO: Replace with your backend API
+			const attendanceData = localStorage.getItem('attendance_data');
+			const allAttendance = attendanceData ? JSON.parse(attendanceData) : [];
+			const updated = allAttendance.map((a: any) =>
+				a.id === todayAttendance.id ? { ...a, check_out: time } : a
+			);
+			localStorage.setItem('attendance_data', JSON.stringify(updated));
+			
 			toast.success(`Checked out at ${time}`);
 		} catch (error) {
 			console.error('Check-out error:', error);
@@ -268,15 +259,24 @@ const EmployeeDashboard = () => {
 	const handleTaskStatusUpdate = async (taskId: string, newStatus: Task['status']) => {
 		const supabaseStatus = newStatus === 'in-progress' ? 'in_progress' : newStatus;
 		try {
-			const { error } = await supabase
-				.from('tasks')
-				.update({
+			// TODO: Replace with your backend API
+			const tasksData = localStorage.getItem('tasks_data');
+			const allTasks = tasksData ? JSON.parse(tasksData) : [];
+			const updated = allTasks.map((t: any) =>
+				t.id === taskId ? {
+					...t,
 					status: supabaseStatus,
 					completed_at: supabaseStatus === 'completed' ? new Date().toISOString() : null,
-				})
-				.eq('id', taskId);
-			if (error) throw error;
-			setTasks(prev => prev.map(task => task.id === taskId ? { ...task, status: newStatus, completedAt: supabaseStatus === 'completed' ? new Date().toISOString() : task.completedAt } : task));
+					updated_at: new Date().toISOString(),
+				} : t
+			);
+			localStorage.setItem('tasks_data', JSON.stringify(updated));
+			
+			setTasks(prev => prev.map(task => 
+				task.id === taskId 
+					? { ...task, status: newStatus, completedAt: supabaseStatus === 'completed' ? new Date().toISOString() : task.completedAt } 
+					: task
+			));
 			toast.success(`Task status updated to ${newStatus.replace('-', ' ')}`);
 		} catch (error) {
 			console.error('Error updating task status:', error);
@@ -286,8 +286,14 @@ const EmployeeDashboard = () => {
 
 	const handleMarkMessageRead = useCallback(async (messageId: string) => {
 		try {
-			const { error } = await supabase.from('messages').update({ read: true }).eq('id', messageId);
-			if (error) throw error;
+			// TODO: Replace with your backend API
+			const messagesData = localStorage.getItem('messages_data');
+			const allMessages = messagesData ? JSON.parse(messagesData) : [];
+			const updated = allMessages.map((m: any) =>
+				m.id === messageId ? { ...m, read: true } : m
+			);
+			localStorage.setItem('messages_data', JSON.stringify(updated));
+			
 			setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, read: true } : msg)));
 		} catch (error) {
 			console.error('Error marking message as read:', error);
@@ -501,9 +507,9 @@ const EmployeeDashboard = () => {
 					<TabsContent value="meetings" className="space-y-4">
 						{meetings.length === 0 ? (
 							<Card className="p-12 text-center">
-								<AlertCircle className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+								<Calendar className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
 								<h3 className="text-xl font-semibold mb-2">No meetings scheduled</h3>
-								<p className="text-muted-foreground">You don't have any meetings at the moment.</p>
+								<p className="text-muted-foreground">You don't have any upcoming meetings.</p>
 							</Card>
 						) : (
 							meetings.map((meeting) => (
@@ -512,25 +518,31 @@ const EmployeeDashboard = () => {
 										<div className="flex-1">
 											<h3 className="text-lg font-semibold mb-2">{meeting.title}</h3>
 											<p className="text-muted-foreground mb-3">{meeting.description}</p>
-											<div className="flex items-center gap-4 text-sm">
-												<div className="flex items-center gap-2">
+											<div className="flex items-center gap-4 text-sm text-muted-foreground">
+												<span className="flex items-center gap-1">
 													<Calendar className="w-4 h-4" />
-													<span>{new Date(meeting.date).toLocaleDateString()}</span>
-												</div>
-												<div className="flex items-center gap-2">
+													{new Date(meeting.date).toLocaleDateString()}
+												</span>
+												<span>•</span>
+												<span className="flex items-center gap-1">
 													<Clock className="w-4 h-4" />
-													<span>{meeting.time}</span>
-												</div>
+													{meeting.time}
+												</span>
 											</div>
 											{meeting.link && (
-												<Button variant="link" className="p-0 h-auto mt-2" asChild>
-													<a href={meeting.link} target="_blank" rel="noopener noreferrer">
-														Join Meeting →
-													</a>
-												</Button>
+												<a
+													href={meeting.link}
+													target="_blank"
+													rel="noopener noreferrer"
+													className="text-primary hover:underline text-sm mt-2 inline-block"
+												>
+													Join Meeting →
+												</a>
 											)}
 										</div>
-										<Badge>{meeting.status}</Badge>
+										<Badge className={meeting.status === 'scheduled' ? 'bg-blue-500/10 text-blue-500' : 'bg-gray-500/10 text-gray-500'}>
+											{meeting.status}
+										</Badge>
 									</div>
 								</Card>
 							))
@@ -539,76 +551,67 @@ const EmployeeDashboard = () => {
 
 					<TabsContent value="performance" className="space-y-6">
 						<Card className="p-6">
-							<h3 className="text-xl font-semibold mb-4">Performance Over Time</h3>
-							<PerformanceChart employeeId={user?.id || ''} />
-						</Card>
-
-						<Card className="p-6">
-							<h3 className="text-xl font-semibold mb-4">Completed Work History</h3>
-							{completedTaskHistory.length === 0 ? (
-								<p className="text-sm text-muted-foreground">No completed tasks yet.</p>
+							<h3 className="text-xl font-bold mb-4">Performance Overview</h3>
+							{evaluations.length > 0 ? (
+								<div className="space-y-6">
+									<PersonalPerformanceChart />
+									<div className="mt-6">
+										<h4 className="font-semibold mb-3">Recent Evaluations</h4>
+										{evaluations.slice(0, 3).map((evaluation) => (
+											<Card key={evaluation.id} className="p-4 mb-3">
+												<div className="flex justify-between items-start">
+													<div>
+														<p className="text-sm text-muted-foreground">
+															{new Date(evaluation.date).toLocaleDateString()}
+														</p>
+														<p className="mt-1">{evaluation.comments}</p>
+													</div>
+													<Badge className="bg-primary/10 text-primary">
+														Score: {evaluation.score}/100
+													</Badge>
+												</div>
+											</Card>
+										))}
+									</div>
+								</div>
 							) : (
-								<div className="space-y-2">
-									{completedTaskHistory.slice(0, 10).map((task) => (
-										<div key={task.id} className="flex justify-between text-sm border-b last:border-b-0 pb-2">
-											<span className="font-medium">{task.title}</span>
-											<span className="text-muted-foreground">
-												{new Date(task.completedAt ?? task.deadline ?? '').toLocaleDateString()}
-											</span>
-										</div>
-									))}
+								<div className="text-center py-8">
+									<TrendingUp className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+									<h4 className="text-lg font-semibold mb-2">No evaluations yet</h4>
+									<p className="text-muted-foreground">Your performance evaluations will appear here.</p>
 								</div>
 							)}
 						</Card>
 
-						{evaluations.length === 0 ? (
-							<Card className="p-12 text-center">
-								<TrendingUp className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-								<h3 className="text-xl font-semibold mb-2">No evaluations yet</h3>
-								<p className="text-muted-foreground">Your performance evaluations will appear here.</p>
-							</Card>
-						) : (
-							evaluations.map((evaluation) => (
-								<Card key={evaluation.id} className="p-6">
-									<div className="flex justify-between items-start mb-4">
-										<div>
-											<h3 className="text-lg font-semibold">Performance Evaluation</h3>
-											<p className="text-sm text-muted-foreground">
-												{new Date(evaluation.date).toLocaleDateString()}
-											</p>
+						<Card className="p-6">
+							<h3 className="text-xl font-bold mb-4">Completed Tasks History</h3>
+							{completedTaskHistory.length > 0 ? (
+								<div className="space-y-3">
+									{completedTaskHistory.slice(0, 5).map((task) => (
+										<div key={task.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+											<div className="flex items-center gap-3">
+												<CheckCircle2 className="w-5 h-5 text-green-500" />
+												<div>
+													<p className="font-medium">{task.title}</p>
+													<p className="text-sm text-muted-foreground">
+														Completed: {task.completedAt ? new Date(task.completedAt).toLocaleDateString() : 'N/A'}
+													</p>
+												</div>
+											</div>
+											<Badge variant={task.priority === 'high' ? 'destructive' : 'default'}>
+												{task.priority}
+											</Badge>
 										</div>
-										<div className="text-right">
-											<div className="text-3xl font-bold text-primary">{evaluation.score}/5.0</div>
-											<p className="text-sm text-muted-foreground">Overall Score</p>
-										</div>
-									</div>
-
-									<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-										<div>
-											<p className="text-sm text-muted-foreground">Productivity</p>
-											<p className="text-xl font-semibold">{evaluation.categories.productivity}</p>
-										</div>
-										<div>
-											<p className="text-sm text-muted-foreground">Quality</p>
-											<p className="text-xl font-semibold">{evaluation.categories.quality}</p>
-										</div>
-										<div>
-											<p className="text-sm text-muted-foreground">Teamwork</p>
-											<p className="text-xl font-semibold">{evaluation.categories.teamwork}</p>
-										</div>
-										<div>
-											<p className="text-sm text-muted-foreground">Communication</p>
-											<p className="text-xl font-semibold">{evaluation.categories.communication}</p>
-										</div>
-									</div>
-
-									<div className="pt-4 border-t">
-										<p className="text-sm font-semibold mb-2">Feedback:</p>
-										<p className="text-muted-foreground">{evaluation.comments}</p>
-									</div>
-								</Card>
-							))
-						)}
+									))}
+								</div>
+							) : (
+								<div className="text-center py-8">
+									<AlertCircle className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+									<h4 className="text-lg font-semibold mb-2">No completed tasks yet</h4>
+									<p className="text-muted-foreground">Completed tasks will appear here.</p>
+								</div>
+							)}
+						</Card>
 					</TabsContent>
 				</Tabs>
 			</div>

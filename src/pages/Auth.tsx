@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -15,6 +15,7 @@ export default function Auth() {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { signup, login } = useAuth();
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,29 +23,15 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              full_name: fullName,
-            },
-          },
-        });
-
-        if (error) throw error;
-        toast.success('Account created! Please check your email to verify.');
-        setIsSignUp(false);
+        // TODO: Replace with your backend API
+        await signup(email, password, fullName, 'employee');
+        toast.success('Account created successfully!');
+        navigate('/employee');
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) throw error;
+        // TODO: Replace with your backend API
+        await login(email, password, 'employee');
         toast.success('Signed in successfully!');
-        navigate('/');
+        navigate('/employee');
       }
     } catch (error: any) {
       toast.error(error.message || 'Authentication failed');
@@ -55,14 +42,8 @@ export default function Auth() {
 
   const handleGoogleAuth = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/`,
-        },
-      });
-
-      if (error) throw error;
+      // TODO: Replace with your backend Google OAuth integration
+      toast.info('Google sign-in requires backend integration');
     } catch (error: any) {
       toast.error(error.message || 'Google sign-in failed');
     }
