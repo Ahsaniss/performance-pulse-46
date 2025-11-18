@@ -10,14 +10,13 @@ export const SignUp = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<'admin' | 'employee'>('employee');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signup, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
-      navigate(user.role === 'admin' ? '/admin' : '/employee');
+      navigate('/employee');
     }
   }, [user, navigate]);
 
@@ -25,8 +24,8 @@ export const SignUp = () => {
     e.preventDefault();
     try {
       setIsSubmitting(true);
-      await signup(email, password, name, role);
-      navigate(role === 'admin' ? '/admin' : '/employee');
+      await signup(email, password, name);
+      navigate('/employee');
     } finally {
       setIsSubmitting(false);
     }
@@ -66,27 +65,6 @@ export const SignUp = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-          </div>
-          <div>
-            <Label>Sign up as</Label>
-            <div className="flex gap-4 mt-2">
-              <Button
-                type="button"
-                variant={role === 'admin' ? 'default' : 'outline'}
-                onClick={() => setRole('admin')}
-                className="flex-1"
-              >
-                Admin
-              </Button>
-              <Button
-                type="button"
-                variant={role === 'employee' ? 'default' : 'outline'}
-                onClick={() => setRole('employee')}
-                className="flex-1"
-              >
-                Employee
-              </Button>
-            </div>
           </div>
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? 'Creating account...' : 'Sign Up'}

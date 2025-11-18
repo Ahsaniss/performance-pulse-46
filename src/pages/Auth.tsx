@@ -24,7 +24,7 @@ export default function Auth() {
     try {
       if (isSignUp) {
         // TODO: Replace with your backend API
-        await signup(email, password, fullName, 'employee');
+        await signup(email, password, fullName);
         toast.success('Account created successfully!');
         navigate('/employee');
       } else {
