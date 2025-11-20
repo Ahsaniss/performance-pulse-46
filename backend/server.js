@@ -1,0 +1,50 @@
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const connectDB = require('./src/config/db');
+
+// Load environment variables
+dotenv.config();
+
+// Connect to MongoDB
+connectDB();
+
+const app = express();
+
+// Middleware
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Routes
+app.use('/api/auth', require('./src/routes/auth'));
+app.use('/api/employees', require('./src/routes/employees'));
+app.use('/api/tasks', require('./src/routes/tasks'));
+app.use('/api/messages', require('./src/routes/messages'));
+app.use('/api/meetings', require('./src/routes/meetings'));
+app.use('/api/evaluations', require('./src/routes/evaluations'));
+app.use('/api/attendance', require('./src/routes/attendance'));
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'Server is running' });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ 
+    success: false, 
+    message: 'Server Error', 
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+  });
+});
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
