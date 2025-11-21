@@ -20,7 +20,7 @@ export const useAttendance = (employeeId?: string) => {
       }
       return [];
     },
-    enabled: !!employeeId,
+    enabled: true,
   });
 
   const addAttendanceMutation = useMutation({

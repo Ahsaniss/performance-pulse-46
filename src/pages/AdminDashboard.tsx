@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,15 +15,20 @@ import { AdminOverview } from "@/components/admin/AdminOverview";
 import { AddEmployeeModal } from "@/components/admin/AddEmployeeModal";
 import { AddEvaluationModal } from "@/components/admin/AddEvaluationModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useProfiles } from "@/hooks/useProfiles";
+import { useEmployees } from "@/hooks/useEmployees";
+import { useTasks } from "@/hooks/useTasks";
 import { useMeetings } from "@/hooks/useMeetings";
+import { useEvaluations } from "@/hooks/useEvaluations";
 import { toast } from "sonner";
 
 export const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { profiles, loading } = useProfiles();
-  const { meetings } = useMeetings(user?.id);
+  const { employees, loading: employeesLoading } = useEmployees();
+  const { tasks, loading: tasksLoading } = useTasks();
+  const { meetings, loading: meetingsLoading } = useMeetings(user?.id);
+  const { evaluations, loading: evaluationsLoading } = useEvaluations();
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -31,66 +36,35 @@ export const AdminDashboard = () => {
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [showAddEvaluationModal, setShowAddEvaluationModal] = useState(false);
-  const [stats, setStats] = useState({
-    completedTasksToday: 0,
-    pendingTasks: 0,
-    avgPerformance: '0.0'
-  });
   const [isExporting, setIsExporting] = useState(false);
 
-  const fetchStats = useCallback(async () => {
-    try {
-      // TODO: Replace with backend API
-      const tasksData = localStorage.getItem('tasks_data');
-      const tasks = tasksData ? JSON.parse(tasksData) : [];
-      
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      
-      const completedToday = tasks.filter((t: any) => {
-        if (t.status !== 'completed' || !t.updated_at) return false;
-        const updatedDate = new Date(t.updated_at);
-        return updatedDate >= todayStart;
-      });
-      
-      const pending = tasks.filter((t: any) => t.status !== 'completed');
-      
-      const avgScore = profiles.length > 0
-        ? (profiles.reduce((acc, p) => acc + (p.performance_score || 0), 0) / profiles.length).toFixed(1)
-        : '0.0';
-      
-      setStats({
-        completedTasksToday: completedToday.length,
-        pendingTasks: pending.length,
-        avgPerformance: avgScore,
-      });
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  }, [profiles]);
-
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+  const stats = useMemo(() => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    
+    const completedToday = tasks.filter((t: any) => {
+      if (t.status !== 'completed' || !t.updatedAt) return false;
+      const updatedDate = new Date(t.updatedAt);
+      return updatedDate >= todayStart;
+    });
+    
+    const pending = tasks.filter((t: any) => t.status !== 'completed');
+    
+    const avgScore = employees.length > 0
+      ? (employees.reduce((acc, p) => acc + (p.performanceScore || 0), 0) / employees.length).toFixed(1)
+      : '0.0';
+    
+    return {
+      completedTasksToday: completedToday.length,
+      pendingTasks: pending.length,
+      avgPerformance: avgScore,
+    };
+  }, [tasks, employees]);
 
   const handleLogout = () => {
     logout();
     navigate('/signin');
   };
-
-  // Convert profiles to employee format for EmployeeGrid
-  const employees = profiles.map(p => ({
-    id: p.id,
-    name: p.full_name,
-    email: p.email,
-    avatar: p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.email}`,
-    department: p.department || 'General',
-    position: p.position || 'Employee',
-    role: 'employee' as const,
-    joinDate: p.join_date || new Date().toISOString(),
-    status: (p.status || 'active') as 'active' | 'inactive' | 'on-leave',
-    performanceScore: p.performance_score || 0
-  }));
 
   const filteredEmployees = employees.filter(emp =>
     emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -98,26 +72,20 @@ export const AdminDashboard = () => {
     emp.position.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalEmployees = profiles.length;
+  const totalEmployees = employees.length;
   const upcomingMeetings = meetings.filter(m => m.status === 'scheduled').length;
 
   const handleExportReports = async () => {
     try {
       setIsExporting(true);
-      // TODO: Replace with backend API
-      const tasksData = localStorage.getItem('tasks_data');
-      const evaluationsData = localStorage.getItem('evaluations_data');
-      
-      const tasks = tasksData ? JSON.parse(tasksData) : [];
-      const evaluations = evaluationsData ? JSON.parse(evaluationsData) : [];
       
       const rows = employees.map((emp) => {
-        const empTasks = tasks.filter((task: any) => task.assigned_to === emp.id);
+        const empTasks = tasks.filter((task: any) => task.assignedTo === emp.id);
         const completedCount = empTasks.filter((task: any) => task.status === 'completed').length;
         const pendingCount = empTasks.length - completedCount;
         const latestEvaluation = evaluations
-          .filter((evaluation: any) => evaluation.employee_id === emp.id)
-          .sort((a: any, b: any) => new Date(b.date || b.created_at || '').getTime() - new Date(a.date || a.created_at || '').getTime())[0];
+          .filter((evaluation: any) => evaluation.employeeId === emp.id)
+          .sort((a: any, b: any) => new Date(b.date || b.createdAt || '').getTime() - new Date(a.date || a.createdAt || '').getTime())[0];
         return {
           Name: emp.name,
           Department: emp.department,
@@ -159,7 +127,7 @@ export const AdminDashboard = () => {
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <img src={user?.avatar} alt={user?.name} className="w-10 h-10 rounded-full" />
+                <img src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`} alt={user?.name} className="w-10 h-10 rounded-full" />
                 <div className="text-right hidden md:block">
                   <p className="text-sm font-semibold">{user?.name}</p>
                   <p className="text-xs text-muted-foreground">{user?.email}</p>

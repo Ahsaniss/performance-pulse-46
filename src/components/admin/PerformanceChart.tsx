@@ -1,22 +1,73 @@
 import { Card } from "@/components/ui/card";
 import { TrendingUp, Briefcase } from "lucide-react";
+import { useEvaluations } from "@/hooks/useEvaluations";
+import { useTasks } from "@/hooks/useTasks";
+import { useMemo } from "react";
 
 interface PerformanceChartProps {
   employeeId: string;
 }
 
 export const PerformanceChart = ({ employeeId }: PerformanceChartProps) => {
-  const data = [
-    { month: "Jan", performance: 4.2, tasks: 8 },
-    { month: "Feb", performance: 4.3, tasks: 10 },
-    { month: "Mar", performance: 4.5, tasks: 12 },
-    { month: "Apr", performance: 4.4, tasks: 11 },
-    { month: "May", performance: 4.6, tasks: 14 },
-    { month: "Jun", performance: 4.5, tasks: 13 },
-  ];
+  const { evaluations } = useEvaluations(employeeId);
+  const { tasks } = useTasks(employeeId);
+
+  const data = useMemo(() => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const currentYear = new Date().getFullYear();
+    
+    // Initialize data for the last 6 months
+    const last6Months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      last6Months.push({
+        month: months[d.getMonth()],
+        year: d.getFullYear(),
+        monthIndex: d.getMonth(),
+        performance: 0,
+        tasks: 0,
+        evalCount: 0
+      });
+    }
+
+    // Aggregate evaluations
+    evaluations.forEach(ev => {
+      const date = new Date(ev.date);
+      const monthIndex = date.getMonth();
+      const year = date.getFullYear();
+      
+      const monthData = last6Months.find(m => m.monthIndex === monthIndex && m.year === year);
+      if (monthData) {
+        monthData.performance += ev.score; // Assuming score is out of 5 or normalized
+        monthData.evalCount += 1;
+      }
+    });
+
+    // Aggregate tasks
+    tasks.forEach(task => {
+      if (task.status === 'completed' && task.updatedAt) {
+        const date = new Date(task.updatedAt);
+        const monthIndex = date.getMonth();
+        const year = date.getFullYear();
+        
+        const monthData = last6Months.find(m => m.monthIndex === monthIndex && m.year === year);
+        if (monthData) {
+          monthData.tasks += 1;
+        }
+      }
+    });
+
+    // Calculate averages
+    return last6Months.map(m => ({
+      month: m.month,
+      performance: m.evalCount > 0 ? Number((m.performance / m.evalCount).toFixed(1)) : 0,
+      tasks: m.tasks
+    }));
+  }, [evaluations, tasks]);
 
   const maxPerformance = 5;
-  const maxTasks = Math.max(...data.map((d) => d.tasks));
+  const maxTasks = Math.max(...data.map((d) => d.tasks), 1); // Avoid division by zero
 
   return (
     <Card className="p-6">

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
+import { useTasks } from "@/hooks/useTasks";
 
 interface Employee {
   id: string;
@@ -24,10 +24,10 @@ export function TaskDialog({ employees, onTaskCreated }: TaskDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
-  const [priority, setPriority] = useState("medium");
+  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [dueDate, setDueDate] = useState("");
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
+  const { createTask } = useTasks();
 
   const handleCreateTask = async () => {
     if (!title || !assignedTo) {
@@ -37,22 +37,15 @@ export function TaskDialog({ employees, onTaskCreated }: TaskDialogProps) {
 
     setLoading(true);
     try {
-      // TODO: Replace with backend API
-      const tasksData = localStorage.getItem('tasks_data');
-      const tasks = tasksData ? JSON.parse(tasksData) : [];
-      tasks.push({
-        id: `task_${Date.now()}`,
+      await createTask({
         title,
         description,
-        assigned_to: assignedTo,
-        assigned_by: user?.id,
+        assignedTo,
+        assignedBy: '', // Backend handles this
         priority,
-        due_date: dueDate || null,
+        deadline: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
         status: 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       });
-      localStorage.setItem('tasks_data', JSON.stringify(tasks));
 
       toast.success("Task created successfully!");
       setTitle("");
@@ -63,7 +56,7 @@ export function TaskDialog({ employees, onTaskCreated }: TaskDialogProps) {
       setOpen(false);
       onTaskCreated?.();
     } catch (error: any) {
-      toast.error("Failed to create task");
+      // Error handled in hook
     } finally {
       setLoading(false);
     }
@@ -122,7 +115,7 @@ export function TaskDialog({ employees, onTaskCreated }: TaskDialogProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
-              <Select value={priority} onValueChange={setPriority}>
+              <Select value={priority} onValueChange={(val: "low" | "medium" | "high") => setPriority(val)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

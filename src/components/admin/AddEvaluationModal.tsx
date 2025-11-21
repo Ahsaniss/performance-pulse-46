@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEmployees } from '@/hooks/useEmployees';
-import { dataStore } from '@/lib/store';
+import { useEvaluations } from '@/hooks/useEvaluations';
 import { Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +18,7 @@ interface AddEvaluationModalProps {
 
 export const AddEvaluationModal = ({ onClose, preSelectedEmployeeId }: AddEvaluationModalProps) => {
   const { employees } = useEmployees();
+  const { createEvaluation } = useEvaluations();
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     employeeId: preSelectedEmployeeId || '',
@@ -43,23 +44,27 @@ export const AddEvaluationModal = ({ onClose, preSelectedEmployeeId }: AddEvalua
       return;
     }
 
-    await dataStore.addEvaluation({
-      employeeId: formData.employeeId,
-      evaluatedBy: user?.id || 'admin-001',
-      score: Number(overallScore.toFixed(1)),
-      date: new Date().toISOString(),
-      comments: formData.comments,
-      categories: {
-        productivity: formData.productivity,
-        quality: formData.quality,
-        teamwork: formData.teamwork,
-        communication: formData.communication,
-      },
-    });
+    try {
+      await createEvaluation({
+        employeeId: formData.employeeId,
+        evaluatedBy: user?.id || 'admin-001',
+        score: Number(overallScore.toFixed(1)),
+        date: new Date().toISOString(),
+        comments: formData.comments,
+        categories: {
+          productivity: formData.productivity,
+          quality: formData.quality,
+          teamwork: formData.teamwork,
+          communication: formData.communication,
+        },
+      });
 
-    const employee = employees.find(e => e.id === formData.employeeId);
-    toast.success(`Evaluation added for ${employee?.name}!`);
-    onClose();
+      const employee = employees.find(e => e.id === formData.employeeId);
+      // toast.success(`Evaluation added for ${employee?.name}!`); // Handled in hook
+      onClose();
+    } catch (error) {
+      console.error('Failed to create evaluation:', error);
+    }
   };
 
   const renderStarRating = (category: 'productivity' | 'quality' | 'teamwork' | 'communication', label: string) => (

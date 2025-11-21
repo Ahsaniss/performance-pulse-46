@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,7 +13,7 @@ import { ScheduleMeetingModal } from '@/components/admin/ScheduleMeetingModal';
 import { useTasks } from '@/hooks/useTasks';
 import { useEvaluations } from '@/hooks/useEvaluations';
 import { useAttendance } from '@/hooks/useAttendance';
-import { useProfiles } from '@/hooks/useProfiles';
+import { useEmployees } from '@/hooks/useEmployees';
 import { exportToCSV, exportToPDF } from '@/lib/exportUtils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -23,7 +23,7 @@ interface EmployeeModalProps {
 }
 
 export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
-  const { profiles } = useProfiles();
+  const { employees } = useEmployees();
   const { tasks, deleteTask } = useTasks(employeeId);
   const { evaluations, deleteEvaluation } = useEvaluations(employeeId);
   const { attendance } = useAttendance(employeeId);
@@ -35,17 +35,17 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ type: 'task' | 'evaluation', id: string } | null>(null);
 
-  const employee = profiles.find(emp => emp.id === employeeId);
+  const employee = employees.find(emp => emp.id === employeeId);
 
   if (!employee) return null;
 
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
-  const inProgressTasks = tasks.filter(t => t.status === 'in_progress').length;
+  const inProgressTasks = tasks.filter(t => t.status === 'in-progress').length;
   const pendingTasks = tasks.filter(t => t.status === 'pending').length;
 
   const handleExportCSV = () => {
     exportToCSV({
-      name: employee.full_name,
+      name: employee.name,
       email: employee.email,
       department: employee.department || 'N/A',
       position: employee.position || 'N/A',
@@ -57,7 +57,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
 
   const handleExportPDF = () => {
     exportToPDF({
-      name: employee.full_name,
+      name: employee.name,
       email: employee.email,
       department: employee.department || 'N/A',
       position: employee.position || 'N/A',
@@ -96,12 +96,12 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
           {/* Employee Header */}
           <div className="flex items-start gap-6 pb-6 border-b">
             <img
-              src={employee.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${employee.full_name}`}
-              alt={employee.full_name}
+              src={employee.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${employee.name}`}
+              alt={employee.name}
               className="w-24 h-24 rounded-full border-4 border-primary"
             />
             <div className="flex-1">
-              <h2 className="text-2xl font-bold">{employee.full_name}</h2>
+              <h2 className="text-2xl font-bold">{employee.name}</h2>
               <p className="text-muted-foreground">{employee.position || 'N/A'}</p>
               <div className="flex items-center gap-4 mt-4 text-sm">
                 <div className="flex items-center gap-2">
@@ -114,14 +114,14 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  <span>Joined {employee.join_date ? new Date(employee.join_date).toLocaleDateString() : 'N/A'}</span>
+                  <span>Joined {employee.joinDate ? new Date(employee.joinDate).toLocaleDateString() : 'N/A'}</span>
                 </div>
               </div>
             </div>
             <div className="text-right">
               <Badge className="mb-2">{employee.status || 'active'}</Badge>
               <div className="text-2xl font-bold text-primary">
-                {employee.performance_score || 0}/5.0
+                {employee.performanceScore || 0}/5.0
               </div>
               <p className="text-sm text-muted-foreground">Performance Score</p>
             </div>
@@ -214,7 +214,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                               {task.priority}
                             </Badge>
                             <span className="text-muted-foreground">
-                              Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No deadline'}
+                              Due: {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}
                             </span>
                           </div>
                         </div>
@@ -223,7 +223,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                             className={
                               task.status === 'completed'
                                 ? 'bg-green-500/10 text-green-500'
-                                : task.status === 'in_progress'
+                                : task.status === 'in-progress'
                                 ? 'bg-blue-500/10 text-blue-500'
                                 : 'bg-amber-500/10 text-amber-500'
                             }
@@ -257,7 +257,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                 </Button>
               </div>
 
-{evaluations.length === 0 ? (
+              {evaluations.length === 0 ? (
                 <Card className="p-8 text-center">
                   <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
                   <p className="text-muted-foreground">No evaluations yet</p>
@@ -269,12 +269,12 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                       <div>
                         <h4 className="font-semibold">Evaluation Report</h4>
                         <p className="text-sm text-muted-foreground">
-                          {new Date(evaluation.evaluation_date).toLocaleDateString()}
+                          {new Date(evaluation.date).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-primary">{evaluation.satisfaction_score}/5</div>
+                          <div className="text-2xl font-bold text-primary">{evaluation.score}/100</div>
                           <p className="text-sm text-muted-foreground">Score</p>
                         </div>
                         <Button
@@ -293,18 +293,18 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <p className="text-sm text-muted-foreground">Meetings Held</p>
-                        <p className="font-semibold">{evaluation.meetings_held}</p>
+                        <p className="font-semibold">{evaluation.meetingsHeld || 0}</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Training Applied</p>
-                        <p className="font-semibold">{evaluation.training_applied}</p>
+                        <p className="font-semibold">{evaluation.trainingApplied || 0}</p>
                       </div>
                     </div>
 
-                    {evaluation.outcome_summary && (
+                    {evaluation.outcomeSummary && (
                       <div className="pt-4 border-t">
                         <p className="text-sm font-semibold mb-2">Outcome Summary:</p>
-                        <p className="text-sm text-muted-foreground">{evaluation.outcome_summary}</p>
+                        <p className="text-sm text-muted-foreground">{evaluation.outcomeSummary}</p>
                       </div>
                     )}
                   </Card>
@@ -327,8 +327,8 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                         <div>
                           <p className="font-semibold">{new Date(record.date).toLocaleDateString()}</p>
                           <p className="text-sm text-muted-foreground">
-                            {record.check_in && `Check-in: ${record.check_in}`}
-                            {record.check_out && ` | Check-out: ${record.check_out}`}
+                            {record.checkIn && `Check-in: ${record.checkIn}`}
+                            {record.checkOut && ` | Check-out: ${record.checkOut}`}
                           </p>
                         </div>
                         <Badge

@@ -21,7 +21,21 @@ export const useTasks = (employeeId?: string) => {
       }
       return [];
     },
-    enabled: !!employeeId, // Only fetch if employeeId is provided (or remove if you want all tasks when no ID)
+    enabled: true, // Always fetch, filter on backend if needed
+  });
+
+  const createTaskMutation = useMutation({
+    mutationFn: async (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+      const response = await api.post('/tasks', task);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Task created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create task');
+    },
   });
 
   const updateTaskMutation = useMutation({
@@ -55,6 +69,7 @@ export const useTasks = (employeeId?: string) => {
   return {
     tasks,
     loading,
+    createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => createTaskMutation.mutateAsync(task),
     updateTask: (id: string, updates: Partial<Task>) => updateTaskMutation.mutateAsync({ id, updates }),
     deleteTask: (id: string) => deleteTaskMutation.mutateAsync(id),
     refetch,

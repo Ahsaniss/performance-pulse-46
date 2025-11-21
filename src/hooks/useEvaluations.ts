@@ -21,7 +21,7 @@ export const useEvaluations = (employeeId?: string) => {
       }
       return [];
     },
-    enabled: !!employeeId,
+    enabled: true,
   });
 
   const deleteEvaluationMutation = useMutation({
@@ -38,9 +38,24 @@ export const useEvaluations = (employeeId?: string) => {
     },
   });
 
+  const createEvaluationMutation = useMutation({
+    mutationFn: async (evaluationData: Partial<Evaluation>) => {
+      const response = await api.post('/evaluations', evaluationData);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evaluations'] });
+      toast.success('Evaluation created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create evaluation');
+    },
+  });
+
   return {
     evaluations,
     loading,
+    createEvaluation: (data: Partial<Evaluation>) => createEvaluationMutation.mutateAsync(data),
     deleteEvaluation: (id: string) => deleteEvaluationMutation.mutateAsync(id),
     refetch,
   };

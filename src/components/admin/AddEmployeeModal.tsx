@@ -6,12 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEmployees } from '@/hooks/useEmployees';
 
 interface AddEmployeeModalProps {
   onClose: () => void;
 }
 
 export const AddEmployeeModal = ({ onClose }: AddEmployeeModalProps) => {
+  const { addEmployee } = useEmployees();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -32,37 +34,17 @@ export const AddEmployeeModal = ({ onClose }: AddEmployeeModalProps) => {
     setIsLoading(true);
     
     try {
-      // TODO: Replace with your backend API
-      // const response = await fetch('/api/employees', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData)
-      // });
-      
-      // Mock implementation
-      const profilesData = localStorage.getItem('profiles_data');
-      const profiles = profilesData ? JSON.parse(profilesData) : [];
-      
-      const newProfile = {
-        id: `emp_${Date.now()}`,
-        full_name: formData.name,
-        email: formData.email,
-        department: formData.department,
-        position: formData.position,
+      await addEmployee({
+        ...formData,
+        password: 'password123', // Default password for new employees
+        joinDate: new Date().toISOString(),
         status: 'active',
-        join_date: new Date().toISOString(),
-        performance_score: 0,
-        avatar_url: null,
-      };
+        performanceScore: 0
+      });
       
-      profiles.push(newProfile);
-      localStorage.setItem('profiles_data', JSON.stringify(profiles));
-
-      toast.success('Employee added successfully!');
       onClose();
     } catch (error: any) {
-      toast.error('Failed to add employee');
-      console.error(error);
+      // Error is handled in the hook
     } finally {
       setIsLoading(false);
     }

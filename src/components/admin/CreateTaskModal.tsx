@@ -6,8 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEmployees } from '@/hooks/useEmployees';
-import { useAuth } from '@/contexts/AuthContext';
-import { dataStore } from '@/lib/store';
+import { useTasks } from '@/hooks/useTasks';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -22,7 +21,7 @@ interface CreateTaskModalProps {
 
 export const CreateTaskModal = ({ onClose, preSelectedEmployeeId }: CreateTaskModalProps) => {
   const { employees } = useEmployees();
-  const { user } = useAuth();
+  const { createTask } = useTasks();
   const [assignee, setAssignee] = useState<string>(preSelectedEmployeeId || '');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -35,19 +34,20 @@ export const CreateTaskModal = ({ onClose, preSelectedEmployeeId }: CreateTaskMo
       return;
     }
 
-    await dataStore.addTask({
-      title,
-      description,
-      assignedTo: assignee,
-      assignedBy: user?.id || 'admin-001',
-      status: 'pending',
-      priority,
-      deadline: deadline.toISOString(),
-    });
-
-    const employee = employees.find(e => e.id === assignee);
-    toast.success(`Task assigned to ${employee?.name}!`);
-    onClose();
+    try {
+      await createTask({
+        title,
+        description,
+        assignedTo: assignee,
+        assignedBy: '', // Backend handles this from token
+        status: 'pending',
+        priority,
+        deadline: deadline.toISOString(),
+      });
+      onClose();
+    } catch (error) {
+      // Error handled in hook
+    }
   };
 
   return (
