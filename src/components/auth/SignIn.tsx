@@ -54,13 +54,13 @@ export const SignIn = () => {
           <p className="text-muted-foreground">Sign in to Performance Pulse</p>
           
           {/* Default credentials info */}
-          <div className="mt-4 p-3 bg-primary/10 rounded-lg text-sm text-left">
+         { /*<div className="mt-4 p-3 bg-primary/10 rounded-lg text-sm text-left">
             <p className="font-semibold text-primary mb-2">Default Credentials:</p>
             <div className="space-y-1 text-xs">
               <p>👤 Admin: <span className="font-mono">admin@test.com</span> / <span className="font-mono">admin123</span></p>
               <p>👤 Employee: <span className="font-mono">employee@test.com</span> / <span className="font-mono">employee123</span></p>
             </div>
-          </div>
+          </div> */}
         </div>
         
         {/* Google Sign In */}

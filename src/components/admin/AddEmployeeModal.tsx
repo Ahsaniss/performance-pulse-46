@@ -36,7 +36,6 @@ export const AddEmployeeModal = ({ onClose }: AddEmployeeModalProps) => {
     try {
       await addEmployee({
         ...formData,
-        password: 'password123', // Default password for new employees
         joinDate: new Date().toISOString(),
         status: 'active',
         performanceScore: 0
