@@ -384,6 +384,11 @@ const EmployeeDashboard = () => {
                             <p className="text-sm text-muted-foreground">
                               {new Date(evaluation.date).toLocaleDateString()}
                             </p>
+                            {evaluation.taskId && typeof evaluation.taskId === 'object' && (
+                              <p className="text-sm font-medium text-primary mt-1">
+                                Task: {(evaluation.taskId as any).title}
+                              </p>
+                            )}
                             <p className="mt-1">{evaluation.comments}</p>
                           </div>
                           <Badge className="bg-primary/10 text-primary">

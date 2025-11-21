@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useEvaluations } from '@/hooks/useEvaluations';
+import { useTasks } from '@/hooks/useTasks';
 import { Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,12 +23,15 @@ export const AddEvaluationModal = ({ onClose, preSelectedEmployeeId }: AddEvalua
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     employeeId: preSelectedEmployeeId || '',
+    taskId: '',
     productivity: 0,
     quality: 0,
     teamwork: 0,
     communication: 0,
     comments: '',
   });
+
+  const { tasks } = useTasks(formData.employeeId);
 
   const overallScore = (formData.productivity + formData.quality + formData.teamwork + formData.communication) / 4;
 
@@ -39,6 +43,11 @@ export const AddEvaluationModal = ({ onClose, preSelectedEmployeeId }: AddEvalua
       return;
     }
 
+    if (!formData.taskId) {
+      toast.error('Please select a task to evaluate');
+      return;
+    }
+
     if (formData.productivity === 0 || formData.quality === 0 || formData.teamwork === 0 || formData.communication === 0) {
       toast.error('Please rate all categories');
       return;
@@ -47,6 +56,7 @@ export const AddEvaluationModal = ({ onClose, preSelectedEmployeeId }: AddEvalua
     try {
       await createEvaluation({
         employeeId: formData.employeeId,
+        taskId: formData.taskId,
         evaluatedBy: user?.id || 'admin-001',
         score: Number(overallScore.toFixed(1)),
         date: new Date().toISOString(),
@@ -118,6 +128,31 @@ export const AddEvaluationModal = ({ onClose, preSelectedEmployeeId }: AddEvalua
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="task">Select Task</Label>
+            <Select 
+              value={formData.taskId} 
+              onValueChange={(val) => setFormData({ ...formData, taskId: val })}
+              disabled={!formData.employeeId}
+            >
+              <SelectTrigger id="task">
+                <SelectValue placeholder={formData.employeeId ? "Choose a task" : "Select an employee first"} />
+              </SelectTrigger>
+              <SelectContent>
+                {tasks.filter((t: any) => t.status === 'completed').length === 0 ? (
+                  <SelectItem value="no-tasks" disabled>No completed tasks found</SelectItem>
+                ) : (
+                  tasks.filter((t: any) => t.status === 'completed').map((task: any) => (
+                    <SelectItem key={task.id} value={task.id}>
+                      {task.title}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">Only completed tasks can be evaluated.</p>
           </div>
 
           <div className="space-y-4 p-4 bg-muted/50 rounded-lg">

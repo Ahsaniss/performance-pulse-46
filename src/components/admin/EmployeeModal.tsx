@@ -268,6 +268,11 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h4 className="font-semibold">Evaluation Report</h4>
+                        {evaluation.taskId && typeof evaluation.taskId === 'object' && (
+                          <p className="text-sm font-medium text-primary">
+                            Task: {(evaluation.taskId as any).title}
+                          </p>
+                        )}
                         <p className="text-sm text-muted-foreground">
                           {new Date(evaluation.date).toLocaleDateString()}
                         </p>

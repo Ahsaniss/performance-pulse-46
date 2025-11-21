@@ -17,6 +17,7 @@ export const useEvaluations = (employeeId?: string) => {
           id: evalItem._id,
           employeeId: evalItem.employeeId?._id || evalItem.employeeId,
           evaluatedBy: evalItem.evaluatedBy?._id || evalItem.evaluatedBy,
+          taskId: evalItem.taskId, // Keep the populated object or ID
         }));
       }
       return [];
