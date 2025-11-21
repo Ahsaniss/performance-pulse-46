@@ -327,8 +327,8 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                         <div>
                           <p className="font-semibold">{new Date(record.date).toLocaleDateString()}</p>
                           <p className="text-sm text-muted-foreground">
-                            {record.checkIn && `Check-in: ${record.checkIn}`}
-                            {record.checkOut && ` | Check-out: ${record.checkOut}`}
+                            {record.checkIn && `Check-in: ${new Date(record.checkIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
+                            {record.checkOut && ` | Check-out: ${new Date(record.checkOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
                           </p>
                         </div>
                         <Badge

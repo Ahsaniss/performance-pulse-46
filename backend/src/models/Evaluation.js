@@ -11,6 +11,11 @@ const evaluationSchema = new mongoose.Schema({
     ref: 'User',
     required: [true, 'Evaluator is required']
   },
+  taskId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Task',
+    required: [true, 'Task ID is required']
+  },
   score: {
     type: Number,
     required: [true, 'Score is required'],

@@ -56,6 +56,7 @@ export interface Evaluation {
   id: string;
   employeeId: string;
   evaluatedBy: string;
+  taskId: string;
   score: number;
   date: string;
   comments: string;

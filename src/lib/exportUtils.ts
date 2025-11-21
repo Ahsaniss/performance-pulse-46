@@ -26,7 +26,7 @@ export const exportToCSV = (data: EmployeeData) => {
     csv += 'Tasks Summary\n';
     csv += 'Title,Status,Priority,Due Date\n';
     data.tasks.forEach(task => {
-      csv += `"${task.title}","${task.status}","${task.priority}","${task.due_date || 'N/A'}"\n`;
+      csv += `"${task.title}","${task.status}","${task.priority}","${task.deadline || 'N/A'}"\n`;
     });
     csv += '\n';
 
@@ -34,7 +34,17 @@ export const exportToCSV = (data: EmployeeData) => {
     csv += 'Performance Evaluations\n';
     csv += 'Date,Score,Meetings,Training,Outcome\n';
     data.evaluations.forEach(evaluation => {
-      csv += `"${new Date(evaluation.evaluation_date).toLocaleDateString()}","${evaluation.satisfaction_score}","${evaluation.meetings_held}","${evaluation.training_applied}","${evaluation.outcome_summary || 'N/A'}"\n`;
+      csv += `"${new Date(evaluation.date).toLocaleDateString()}","${evaluation.score}","${evaluation.meetingsHeld || 0}","${evaluation.trainingApplied || 0}","${evaluation.outcomeSummary || 'N/A'}"\n`;
+    });
+    csv += '\n';
+
+    // Attendance
+    csv += 'Attendance Record\n';
+    csv += 'Date,Check In,Check Out,Status\n';
+    data.attendance.forEach(record => {
+      const checkIn = record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : 'N/A';
+      const checkOut = record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : 'N/A';
+      csv += `"${new Date(record.date).toLocaleDateString()}","${checkIn}","${checkOut}","${record.status}"\n`;
     });
 
     // Create download
@@ -107,7 +117,7 @@ export const exportToPDF = (data: EmployeeData) => {
                 <td>${task.title}</td>
                 <td>${task.status}</td>
                 <td>${task.priority}</td>
-                <td>${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'N/A'}</td>
+                <td>${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'N/A'}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -127,11 +137,33 @@ export const exportToPDF = (data: EmployeeData) => {
           <tbody>
             ${data.evaluations.map(evaluation => `
               <tr>
-                <td>${new Date(evaluation.evaluation_date).toLocaleDateString()}</td>
-                <td>${evaluation.satisfaction_score}/5</td>
-                <td>${evaluation.meetings_held}</td>
-                <td>${evaluation.training_applied}</td>
-                <td>${evaluation.outcome_summary || 'N/A'}</td>
+                <td>${new Date(evaluation.date).toLocaleDateString()}</td>
+                <td>${evaluation.score}/100</td>
+                <td>${evaluation.meetingsHeld || 0}</td>
+                <td>${evaluation.trainingApplied || 0}</td>
+                <td>${evaluation.outcomeSummary || 'N/A'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <h2>Attendance Record</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Check In</th>
+              <th>Check Out</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.attendance.map(record => `
+              <tr>
+                <td>${new Date(record.date).toLocaleDateString()}</td>
+                <td>${record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : 'N/A'}</td>
+                <td>${record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : 'N/A'}</td>
+                <td>${record.status}</td>
               </tr>
             `).join('')}
           </tbody>

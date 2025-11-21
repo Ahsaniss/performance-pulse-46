@@ -75,7 +75,7 @@ const EmployeeDashboard = () => {
       await addAttendance({
         employeeId: user.id,
         date: now.toISOString().split('T')[0],
-        checkIn: time,
+        checkIn: now.toISOString(),
         status: 'present',
       });
       
@@ -92,7 +92,7 @@ const EmployeeDashboard = () => {
     const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     
     try {
-      await updateAttendance(todayAttendance.id, { checkOut: time });
+      await updateAttendance(todayAttendance.id, { checkOut: now.toISOString() });
       toast.success(`Checked out at ${time}`);
     } catch (error) {
       console.error('Check-out error:', error);
@@ -164,9 +164,9 @@ const EmployeeDashboard = () => {
               <h3 className="text-lg font-semibold mb-1">Attendance</h3>
               <p className="text-sm text-muted-foreground">
                 {todayAttendance?.checkIn 
-                  ? `Checked in at ${todayAttendance.checkIn}` 
+                  ? `Checked in at ${new Date(todayAttendance.checkIn).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}` 
                   : 'Not checked in yet'}
-                {todayAttendance?.checkOut && ` | Checked out at ${todayAttendance.checkOut}`}
+                {todayAttendance?.checkOut && ` | Checked out at ${new Date(todayAttendance.checkOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
               </p>
             </div>
             <Button 

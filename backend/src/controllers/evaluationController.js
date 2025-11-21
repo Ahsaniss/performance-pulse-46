@@ -9,6 +9,7 @@ exports.getEvaluations = async (req, res) => {
     const evaluations = await Evaluation.find(filter)
       .populate('employeeId', 'name email')
       .populate('evaluatedBy', 'name email')
+      .populate('taskId', 'title')
       .sort('-date');
     res.json({ success: true, data: evaluations });
   } catch (error) {
