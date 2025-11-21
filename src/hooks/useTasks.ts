@@ -1,88 +1,62 @@
-import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '@/lib/api';
+import { Task } from '@/types';
 import { toast } from 'sonner';
 
-// Mock data store for frontend-only mode
-const STORAGE_KEY = 'tasks_data';
-
-export interface Task {
-  id: string;
-  title: string;
-  description: string | null;
-  assigned_to: string;
-  assigned_by: string;
-  status: string;
-  priority: string;
-  due_date: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
 export const useTasks = (employeeId?: string) => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (employeeId) {
-      fetchTasks();
-    }
-  }, [employeeId]);
+  const { data: tasks = [], isLoading: loading, refetch } = useQuery({
+    queryKey: ['tasks', employeeId],
+    queryFn: async () => {
+      const params = employeeId ? { employeeId } : {};
+      const response = await api.get('/tasks', { params });
+      if (response.data.success) {
+        return response.data.data.map((task: any) => ({
+          ...task,
+          id: task._id,
+          assignedTo: task.assignedTo?._id || task.assignedTo, // Handle populated or ID
+          assignedBy: task.assignedBy?._id || task.assignedBy,
+        }));
+      }
+      return [];
+    },
+    enabled: !!employeeId, // Only fetch if employeeId is provided (or remove if you want all tasks when no ID)
+  });
 
-  const fetchTasks = async () => {
-    if (!employeeId) return;
-
-    try {
-      // Load from localStorage
-      const storedData = localStorage.getItem(STORAGE_KEY);
-      const allData = storedData ? JSON.parse(storedData) : [];
-      const filtered = allData.filter((t: Task) => t.assigned_to === employeeId)
-        .sort((a: Task, b: Task) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-      setTasks(filtered);
-    } catch (error: any) {
-      console.error('Failed to load tasks:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateTask = async (id: string, updates: Partial<Task>) => {
-    try {
-      // Update in localStorage
-      const storedData = localStorage.getItem(STORAGE_KEY);
-      const allData = storedData ? JSON.parse(storedData) : [];
-      const updatedData = allData.map((t: Task) => 
-        t.id === id ? { ...t, ...updates, updated_at: new Date().toISOString() } : t
-      );
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedData));
+  const updateTaskMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Task> }) => {
+      const response = await api.put(`/tasks/${id}`, updates);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Task updated successfully');
-      fetchTasks();
-    } catch (error: any) {
-      toast.error('Failed to update task');
-      console.error(error);
-    }
-  };
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update task');
+    },
+  });
 
-  const deleteTask = async (id: string) => {
-    try {
-      // Delete from localStorage
-      const storedData = localStorage.getItem(STORAGE_KEY);
-      const allData = storedData ? JSON.parse(storedData) : [];
-      const updatedData = allData.filter((t: Task) => t.id !== id);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedData));
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.delete(`/tasks/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Task deleted successfully');
-      fetchTasks();
-    } catch (error: any) {
-      toast.error('Failed to delete task');
-      console.error(error);
-    }
-  };
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete task');
+    },
+  });
 
   return {
     tasks,
     loading,
-    updateTask,
-    deleteTask,
-    refetch: fetchTasks,
+    updateTask: (id: string, updates: Partial<Task>) => updateTaskMutation.mutateAsync({ id, updates }),
+    deleteTask: (id: string) => deleteTaskMutation.mutateAsync(id),
+    refetch,
   };
 };

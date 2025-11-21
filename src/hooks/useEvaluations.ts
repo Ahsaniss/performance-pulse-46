@@ -1,69 +1,47 @@
-import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '@/lib/api';
+import { Evaluation } from '@/types';
 import { toast } from 'sonner';
 
-// Mock data store for frontend-only mode
-const STORAGE_KEY = 'evaluations_data';
-
-export interface Evaluation {
-  id: string;
-  employee_id: string;
-  evaluator_id: string;
-  satisfaction_score: number;
-  meetings_held: number;
-  training_applied: number;
-  outcome_summary: string | null;
-  evaluation_date: string;
-  created_at: string;
-}
-
 export const useEvaluations = (employeeId?: string) => {
-  const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (employeeId) {
-      fetchEvaluations();
-    }
-  }, [employeeId]);
+  const { data: evaluations = [], isLoading: loading, refetch } = useQuery({
+    queryKey: ['evaluations', employeeId],
+    queryFn: async () => {
+      const params = employeeId ? { employeeId } : {};
+      const response = await api.get('/evaluations', { params });
+      if (response.data.success) {
+        return response.data.data.map((evalItem: any) => ({
+          ...evalItem,
+          id: evalItem._id,
+          employeeId: evalItem.employeeId?._id || evalItem.employeeId,
+          evaluatedBy: evalItem.evaluatedBy?._id || evalItem.evaluatedBy,
+        }));
+      }
+      return [];
+    },
+    enabled: !!employeeId,
+  });
 
-  const fetchEvaluations = async () => {
-    if (!employeeId) return;
-
-    try {
-      // Load from localStorage
-      const storedData = localStorage.getItem(STORAGE_KEY);
-      const allData = storedData ? JSON.parse(storedData) : [];
-      const filtered = allData.filter((e: Evaluation) => e.employee_id === employeeId)
-        .sort((a: Evaluation, b: Evaluation) => 
-          new Date(b.evaluation_date).getTime() - new Date(a.evaluation_date).getTime()
-        );
-      setEvaluations(filtered);
-    } catch (error: any) {
-      console.error('Failed to load evaluations:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const deleteEvaluation = async (id: string) => {
-    try {
-      // Delete from localStorage
-      const storedData = localStorage.getItem(STORAGE_KEY);
-      const allData = storedData ? JSON.parse(storedData) : [];
-      const updatedData = allData.filter((e: Evaluation) => e.id !== id);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedData));
+  const deleteEvaluationMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.delete(`/evaluations/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evaluations'] });
       toast.success('Evaluation deleted successfully');
-      fetchEvaluations();
-    } catch (error: any) {
-      toast.error('Failed to delete evaluation');
-      console.error(error);
-    }
-  };
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete evaluation');
+    },
+  });
 
   return {
     evaluations,
     loading,
-    deleteEvaluation,
-    refetch: fetchEvaluations,
+    deleteEvaluation: (id: string) => deleteEvaluationMutation.mutateAsync(id),
+    refetch,
   };
 };

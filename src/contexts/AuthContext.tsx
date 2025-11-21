@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
-import { initializeMockUsers, getMockUsers } from '@/lib/mockAuth';
+import api from '@/lib/api';
 
 // Mock authentication for frontend-only mode
 type UserRole = 'admin' | 'employee' | null;
@@ -32,17 +32,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     // Initialize default users and check for existing session
-    const initAuth = () => {
+    const initAuth = async () => {
       try {
-        // Initialize default mock users
-        initializeMockUsers();
-        
-        const storedUser = localStorage.getItem('mockUser');
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+        const token = localStorage.getItem('token');
+        if (token) {
+          const response = await api.get('/auth/me');
+          if (response.data.success) {
+            const userData = response.data.data;
+            setUser({
+              id: userData._id,
+              email: userData.email,
+              name: userData.name,
+              role: userData.role,
+              avatar: userData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.email}`,
+            });
+          }
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
+        localStorage.removeItem('token');
       } finally {
         setIsLoading(false);
       }
@@ -53,30 +61,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string, role: UserRole) => {
     try {
-      // TODO: Replace with your backend authentication API
-      const users = getMockUsers();
+      const response = await api.post('/auth/login', { email, password });
       
-      const foundUser = users.find((u: any) => u.email === email && u.password === password && u.role === role);
-      
-      if (!foundUser) {
-        toast.error('Invalid email or password, or incorrect role');
-        throw new Error('Invalid credentials');
+      if (response.data.success) {
+        const { token, ...userData } = response.data.data;
+        
+        // Verify role matches if needed, or just trust the backend
+        if (role && userData.role !== role) {
+           // Optional: enforce role check if UI requires it, but usually backend is source of truth
+           // For now, we'll warn but proceed, or throw error. 
+           // The original code threw an error, so let's stick to that if strict.
+           // However, usually login just logs you in as who you are.
+           // Let's check if the user role matches the requested role for the UI context
+           if (userData.role !== role) {
+             throw new Error(`Account exists but is not a ${role}`);
+           }
+        }
+
+        localStorage.setItem('token', token);
+        
+        const userObj = {
+          id: userData.id,
+          email: userData.email,
+          name: userData.name,
+          role: userData.role,
+          avatar: userData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.email}`,
+        };
+
+        setUser(userObj);
+        toast.success(`Logged in as ${userData.role}`);
       }
-
-      const userObj = {
-        id: foundUser.id,
-        email: foundUser.email,
-        name: foundUser.name,
-        role: foundUser.role,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${foundUser.email}`,
-      };
-
-      setUser(userObj);
-      localStorage.setItem('mockUser', JSON.stringify(userObj));
-      
-      toast.success(`Logged in as ${role}`);
     } catch (error: any) {
-      toast.error(error.message);
+      const message = error.response?.data?.message || error.message || 'Login failed';
+      toast.error(message);
       throw error;
     }
   };
@@ -89,48 +106,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signup = async (email: string, password: string, fullName: string) => {
     try {
-      // TODO: Replace with your backend registration API
-      const usersData = localStorage.getItem('mockUsers');
-      const users = usersData ? JSON.parse(usersData) : [];
-      
-      if (users.find((u: any) => u.email === email)) {
-        toast.error('User with this email already exists');
-        throw new Error('User already exists');
-      }
-
-      const newUser = {
-        id: `user_${Date.now()}`,
+      const response = await api.post('/auth/register', {
         email,
-        password, // WARNING: Never store plain text passwords in production!
+        password,
         name: fullName,
-        role: 'employee' as const, // Always assign employee role - admins must be assigned manually
-      };
+        role: 'employee' // Default role
+      });
 
-      users.push(newUser);
-      localStorage.setItem('mockUsers', JSON.stringify(users));
+      if (response.data.success) {
+        const { token, ...userData } = response.data.data;
+        
+        localStorage.setItem('token', token);
 
-      const userObj = {
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-        role: newUser.role,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${newUser.email}`,
-      };
+        const userObj = {
+          id: userData.id,
+          email: userData.email,
+          name: userData.name,
+          role: userData.role,
+          avatar: userData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.email}`,
+        };
 
-      setUser(userObj);
-      localStorage.setItem('mockUser', JSON.stringify(userObj));
-      
-      toast.success('Account created successfully!');
+        setUser(userObj);
+        toast.success('Account created successfully!');
+      }
     } catch (error: any) {
-      toast.error(error.message);
+      const message = error.response?.data?.message || error.message || 'Signup failed';
+      toast.error(message);
       throw error;
     }
   };
 
   const logout = () => {
-    // TODO: Replace with your backend logout API
     setUser(null);
-    localStorage.removeItem('mockUser');
+    localStorage.removeItem('token');
     toast.success('Logged out successfully');
   };
 

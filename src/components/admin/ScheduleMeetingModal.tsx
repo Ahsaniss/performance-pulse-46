@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { mockEmployees } from '@/lib/mockData';
+import { useEmployees } from '@/hooks/useEmployees';
+import { useMeetings } from '@/hooks/useMeetings';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -19,6 +20,8 @@ interface ScheduleMeetingModalProps {
 }
 
 export const ScheduleMeetingModal = ({ onClose, preSelectedEmployeeId }: ScheduleMeetingModalProps) => {
+  const { employees } = useEmployees();
+  const { createMeeting } = useMeetings();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState<Date>();
@@ -34,14 +37,26 @@ export const ScheduleMeetingModal = ({ onClose, preSelectedEmployeeId }: Schedul
     );
   };
 
-  const handleSchedule = () => {
+  const handleSchedule = async () => {
     if (!title || !date || !time || selectedAttendees.length === 0) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    toast.success(`Meeting scheduled with ${selectedAttendees.length} attendees!`);
-    onClose();
+    try {
+      await createMeeting({
+        title,
+        description,
+        date: format(date, 'yyyy-MM-dd'),
+        time,
+        link,
+        attendees: selectedAttendees,
+        status: 'scheduled'
+      });
+      onClose();
+    } catch (error) {
+      // Error handled in hook
+    }
   };
 
   return (
@@ -129,7 +144,7 @@ export const ScheduleMeetingModal = ({ onClose, preSelectedEmployeeId }: Schedul
           <div>
             <Label className="mb-3 block">Select Attendees</Label>
             <div className="border rounded-lg p-4 space-y-3 max-h-48 overflow-y-auto">
-              {mockEmployees.map((emp) => (
+              {employees.map((emp) => (
                 <div key={emp.id} className="flex items-center space-x-3">
                   <Checkbox
                     id={emp.id}

@@ -1,49 +1,72 @@
-import { useState, useEffect } from 'react';
-import { dataStore } from '@/lib/store';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '@/lib/api';
 import { Employee } from '@/types';
+import { toast } from 'sonner';
 
 export const useEmployees = () => {
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    // Initialize data from Google Sheets
-    dataStore.initialize().then(() => {
-      setEmployees(dataStore.getEmployees());
-      setLoading(false);
-    });
+  const { data: employees = [], isLoading: loading, error } = useQuery({
+    queryKey: ['employees'],
+    queryFn: async () => {
+      const response = await api.get('/employees');
+      if (response.data.success) {
+        return response.data.data.map((emp: any) => ({
+          ...emp,
+          id: emp._id, // Map _id to id
+        }));
+      }
+      return [];
+    },
+  });
 
-    const maybeUnsubscribe = dataStore.subscribe(() => {
-      setEmployees(dataStore.getEmployees());
-    });
+  const addEmployeeMutation = useMutation({
+    mutationFn: async (employee: Omit<Employee, 'id'>) => {
+      const response = await api.post('/employees', employee);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      toast.success('Employee added successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to add employee');
+    },
+  });
 
-    // dataStore.subscribe may return a cleanup function or a boolean; ensure we return a valid cleanup.
-    if (typeof maybeUnsubscribe === 'function') {
-      return maybeUnsubscribe;
-    }
+  const updateEmployeeMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Employee> }) => {
+      const response = await api.put(`/employees/${id}`, updates);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      toast.success('Employee updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update employee');
+    },
+  });
 
-    return () => {
-      // no-op cleanup
-    };
-  }, []);
-
-  const addEmployee = async (employee: Omit<Employee, 'id'>) => {
-    return await dataStore.addEmployee(employee);
-  };
-
-  const updateEmployee = async (id: string, updates: Partial<Employee>) => {
-    await dataStore.updateEmployee(id, updates);
-  };
-
-  const deleteEmployee = (id: string) => {
-    dataStore.deleteEmployee(id);
-  };
+  const deleteEmployeeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.delete(`/employees/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      toast.success('Employee deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete employee');
+    },
+  });
 
   return {
     employees,
     loading,
-    addEmployee,
-    updateEmployee,
-    deleteEmployee,
+    addEmployee: (employee: Omit<Employee, 'id'>) => addEmployeeMutation.mutateAsync(employee),
+    updateEmployee: (id: string, updates: Partial<Employee>) => updateEmployeeMutation.mutateAsync({ id, updates }),
+    deleteEmployee: (id: string) => deleteEmployeeMutation.mutateAsync(id),
   };
 };

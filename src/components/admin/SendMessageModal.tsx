@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockEmployees } from '@/lib/mockData';
+import { useEmployees } from '@/hooks/useEmployees';
+import { useMessages } from '@/hooks/useMessages';
 import { Send } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -15,20 +16,29 @@ interface SendMessageModalProps {
 }
 
 export const SendMessageModal = ({ onClose, preSelectedEmployeeId }: SendMessageModalProps) => {
+  const { employees } = useEmployees();
+  const { sendMessage } = useMessages();
   const [recipient, setRecipient] = useState<string>(preSelectedEmployeeId || 'all');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!subject || !message) {
       toast.error('Please fill in all fields');
       return;
     }
 
-    // Simulate sending message
-    const recipientName = recipient === 'all' ? 'All Employees' : mockEmployees.find(e => e.id === recipient)?.name;
-    toast.success(`Message sent to ${recipientName}!`);
-    onClose();
+    try {
+      await sendMessage({
+        to: recipient,
+        subject,
+        content: message,
+        type: recipient === 'all' ? 'broadcast' : 'individual'
+      });
+      onClose();
+    } catch (error) {
+      // Error handled in hook
+    }
   };
 
   return (
@@ -47,7 +57,7 @@ export const SendMessageModal = ({ onClose, preSelectedEmployeeId }: SendMessage
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Employees (Broadcast)</SelectItem>
-                {mockEmployees.map((emp) => (
+                {employees.map((emp) => (
                   <SelectItem key={emp.id} value={emp.id}>
                     {emp.name} - {emp.department}
                   </SelectItem>
