@@ -5,18 +5,24 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export const SignUp = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [role, setRole] = useState<'admin' | 'employee'>('employee');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signup, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
-      navigate('/employee');
+      if (user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/employee');
+      }
     }
   }, [user, navigate]);
 
@@ -24,8 +30,8 @@ export const SignUp = () => {
     e.preventDefault();
     try {
       setIsSubmitting(true);
-      await signup(email, password, name);
-      navigate('/employee');
+      await signup(email, password, name, role);
+      // Navigation handled by useEffect
     } finally {
       setIsSubmitting(false);
     }
@@ -65,6 +71,18 @@ export const SignUp = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+          </div>
+          <div>
+            <Label htmlFor="role">Role</Label>
+            <Select value={role} onValueChange={(value: 'admin' | 'employee') => setRole(value)}>
+              <SelectTrigger id="role">
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="employee">Employee</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? 'Creating account...' : 'Sign Up'}

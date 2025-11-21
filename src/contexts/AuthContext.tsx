@@ -17,7 +17,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string, role: UserRole) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
-  signup: (email: string, password: string, fullName: string) => Promise<void>;
+  signup: (email: string, password: string, fullName: string, role?: UserRole) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -104,13 +104,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     throw new Error('Google login not available in frontend-only mode');
   };
 
-  const signup = async (email: string, password: string, fullName: string) => {
+  const signup = async (email: string, password: string, fullName: string, role: UserRole = 'employee') => {
     try {
       const response = await api.post('/auth/register', {
         email,
         password,
         name: fullName,
-        role: 'employee' // Default role
+        role: role // Use provided role
       });
 
       if (response.data.success) {
