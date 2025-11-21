@@ -23,7 +23,7 @@ interface EmployeeModalProps {
 }
 
 export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
-  const { employees } = useEmployees();
+  const { employees, deleteEmployee } = useEmployees();
   const { tasks, deleteTask } = useTasks(employeeId);
   const { evaluations, deleteEvaluation } = useEvaluations(employeeId);
   const { attendance } = useAttendance(employeeId);
@@ -33,7 +33,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ type: 'task' | 'evaluation', id: string } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ type: 'task' | 'evaluation' | 'employee', id: string } | null>(null);
 
   const employee = employees.find(emp => emp.id === employeeId);
 
@@ -67,13 +67,16 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
     });
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!itemToDelete) return;
     
     if (itemToDelete.type === 'task') {
-      deleteTask(itemToDelete.id);
-    } else {
-      deleteEvaluation(itemToDelete.id);
+      await deleteTask(itemToDelete.id);
+    } else if (itemToDelete.type === 'evaluation') {
+      await deleteEvaluation(itemToDelete.id);
+    } else if (itemToDelete.type === 'employee') {
+      await deleteEmployee(itemToDelete.id);
+      onClose(); // Close modal after deleting employee
     }
     
     setDeleteDialogOpen(false);
@@ -87,9 +90,22 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Employee Dashboard</span>
-              <Button variant="ghost" size="icon" onClick={onClose}>
-                <X className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setItemToDelete({ type: 'employee', id: employee.id });
+                    setDeleteDialogOpen(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Employee
+                </Button>
+                <Button variant="ghost" size="icon" onClick={onClose}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
             </DialogTitle>
           </DialogHeader>
 

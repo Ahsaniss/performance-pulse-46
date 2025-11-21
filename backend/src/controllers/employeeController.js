@@ -32,7 +32,13 @@ exports.getEmployee = async (req, res) => {
 // @access  Private/Admin
 exports.createEmployee = async (req, res) => {
   try {
-    const employee = await User.create(req.body);
+    // Add default password if not provided
+    const userData = {
+      ...req.body,
+      password: req.body.password || '123456'
+    };
+
+    const employee = await User.create(userData);
     res.status(201).json({ success: true, data: employee });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
