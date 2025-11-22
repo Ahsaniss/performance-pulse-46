@@ -9,6 +9,7 @@ import { PersonalPerformanceChart } from "@/components/employee/PersonalPerforma
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useTasks } from "@/hooks/useTasks";
 import { useMessages } from "@/hooks/useMessages";
@@ -277,15 +278,20 @@ const EmployeeDashboard = () => {
                       >
                         {task.status === 'in-progress' ? 'in progress' : task.status}
                       </Badge>
-                      <select
-                        className="text-sm border rounded p-1"
+                      <Select
                         value={task.status}
-                        onChange={(e) => handleTaskStatusUpdate(task.id, e.target.value as Task['status'])}
+                        onValueChange={(value) => handleTaskStatusUpdate(task.id, value as Task['status'])}
                       >
-                        <option value="pending">Pending</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                      </select>
+                        <SelectTrigger className="w-[140px] h-8 text-xs">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="in-progress">In Progress</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+
                     </div>
                   </div>
                 </Card>
