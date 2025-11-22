@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { X, Mail, Calendar, MapPin, Plus, CheckCircle2, Clock, AlertCircle, Download, MessageSquare, Video, Trash2 } from 'lucide-react';
+import { X, Mail, Calendar, MapPin, Plus, CheckCircle2, Clock, AlertCircle, Download, MessageSquare, Video, Trash2, Pencil } from 'lucide-react';
 import { PerformanceChart } from '@/components/admin/PerformanceChart';
 import { CreateTaskModal } from '@/components/admin/CreateTaskModal';
 import { AddEvaluationModal } from '@/components/admin/AddEvaluationModal';
@@ -16,6 +16,9 @@ import { useAttendance } from '@/hooks/useAttendance';
 import { useEmployees } from '@/hooks/useEmployees';
 import { exportToCSV, exportToPDF } from '@/lib/exportUtils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface EmployeeModalProps {
   employeeId: string;
@@ -23,7 +26,7 @@ interface EmployeeModalProps {
 }
 
 export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
-  const { employees, deleteEmployee } = useEmployees();
+  const { employees, deleteEmployee, updateEmployee } = useEmployees();
   const { tasks, deleteTask } = useTasks(employeeId);
   const { evaluations, deleteEvaluation } = useEvaluations(employeeId);
   const { attendance } = useAttendance(employeeId);
@@ -34,10 +37,39 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ type: 'task' | 'evaluation' | 'employee', id: string } | null>(null);
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    department: '',
+    position: '',
+    role: 'employee' as 'employee' | 'admin',
+  });
 
   const employee = employees.find(emp => emp.id === employeeId);
 
   if (!employee) return null;
+
+  const handleEditClick = () => {
+    setEditFormData({
+      name: employee.name,
+      email: employee.email,
+      department: employee.department,
+      position: employee.position,
+      role: employee.role || 'employee',
+    });
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    try {
+      await updateEmployee(employeeId, editFormData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to update employee:', error);
+    }
+  };
 
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
   const inProgressTasks = tasks.filter(t => t.status === 'in-progress').length;
@@ -91,6 +123,25 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
             <DialogTitle className="flex items-center justify-between">
               <span>Employee Dashboard</span>
               <div className="flex items-center gap-2">
+                {!isEditing ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEditClick}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={handleSave}>
+                      Save Changes
+                    </Button>
+                  </div>
+                )}
                 <Button
                   variant="destructive"
                   size="sm"
@@ -117,22 +168,76 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
               className="w-24 h-24 rounded-full border-4 border-primary"
             />
             <div className="flex-1">
-              <h2 className="text-2xl font-bold">{employee.name}</h2>
-              <p className="text-muted-foreground">{employee.position || 'N/A'}</p>
-              <div className="flex items-center gap-4 mt-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  <span>{employee.email}</span>
+              {isEditing ? (
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input
+                        id="name"
+                        value={editFormData.name}
+                        onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        value={editFormData.email}
+                        onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="department">Department</Label>
+                      <Select 
+                        value={editFormData.department} 
+                        onValueChange={(val) => setEditFormData({ ...editFormData, department: val })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Engineering">Engineering</SelectItem>
+                          <SelectItem value="Marketing">Marketing</SelectItem>
+                          <SelectItem value="Sales">Sales</SelectItem>
+                          <SelectItem value="HR">HR</SelectItem>
+                          <SelectItem value="Finance">Finance</SelectItem>
+                          <SelectItem value="Operations">Operations</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="position">Position</Label>
+                      <Input
+                        id="position"
+                        value={editFormData.position}
+                        onChange={(e) => setEditFormData({ ...editFormData, position: e.target.value })}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  <span>{employee.department || 'N/A'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  <span>Joined {employee.joinDate ? new Date(employee.joinDate).toLocaleDateString() : 'N/A'}</span>
-                </div>
-              </div>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-bold">{employee.name}</h2>
+                  <p className="text-muted-foreground">{employee.position || 'N/A'}</p>
+                  <div className="flex items-center gap-4 mt-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      <span>{employee.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      <span>{employee.department || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      <span>Joined {employee.joinDate ? new Date(employee.joinDate).toLocaleDateString() : 'N/A'}</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             <div className="text-right">
               <Badge className="mb-2">{employee.status || 'active'}</Badge>
