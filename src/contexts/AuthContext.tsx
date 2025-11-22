@@ -13,18 +13,16 @@ interface User {
   avatar?: string;
 }
 
-interface AuthContextType {
+  interface AuthContextType {
   user: User | null;
   login: (email: string, password: string, role: UserRole) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   signup: (email: string, password: string, fullName: string, role?: UserRole) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
   isLoading: boolean;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+}const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -98,10 +96,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const loginWithGoogle = async () => {
-    // TODO: Replace with your backend Google OAuth integration
-    toast.error('Google login requires backend integration');
-    throw new Error('Google login not available in frontend-only mode');
+  const loginWithGoogle = async (credential: string) => {
+    try {
+      // Send the Google credential token to the backend for verification
+      const response = await api.post('/auth/google', {
+        token: credential
+      });
+
+      if (response.data.success) {
+        const { token, ...userData } = response.data.data;
+        
+        localStorage.setItem('token', token);
+        
+        const userObj = {
+          id: userData.id,
+          email: userData.email,
+          name: userData.name,
+          role: userData.role,
+          avatar: userData.avatar,
+        };
+
+        setUser(userObj);
+        toast.success('Logged in with Google');
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.message || 'Google login failed';
+      toast.error(message);
+    }
   };
 
   const signup = async (email: string, password: string, fullName: string, role: UserRole = 'employee') => {

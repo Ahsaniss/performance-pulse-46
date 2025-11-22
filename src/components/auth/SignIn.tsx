@@ -5,8 +5,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, Mail } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { GoogleLogin } from '@react-oauth/google';
 
 export const SignIn = () => {
   const [email, setEmail] = useState('');
@@ -35,45 +36,28 @@ export const SignIn = () => {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      setIsSubmitting(true);
-      await loginWithGoogle();
-    } catch (error) {
-      console.error('Google sign-in failed:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
       <Card className="w-full max-w-md p-8 shadow-xl">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
           <p className="text-muted-foreground">Sign in to Performance Pulse</p>
-          
-          {/* Default credentials info */}
-         { /*<div className="mt-4 p-3 bg-primary/10 rounded-lg text-sm text-left">
-            <p className="font-semibold text-primary mb-2">Default Credentials:</p>
-            <div className="space-y-1 text-xs">
-              <p>👤 Admin: <span className="font-mono">admin@test.com</span> / <span className="font-mono">admin123</span></p>
-              <p>👤 Employee: <span className="font-mono">employee@test.com</span> / <span className="font-mono">employee123</span></p>
-            </div>
-          </div> */}
         </div>
         
         {/* Google Sign In */}
-        <Button 
-          onClick={handleGoogleSignIn}
-          variant="outline" 
-          className="w-full mb-4"
-          size="lg"
-          disabled={isSubmitting || isLoading}
-        >
-          <Mail className="w-5 h-5 mr-2" />
-          Continue with Google
-        </Button>
+        <div className="flex justify-center mb-4">
+          <GoogleLogin
+            onSuccess={credentialResponse => {
+              if (credentialResponse.credential) {
+                loginWithGoogle(credentialResponse.credential);
+              }
+            }}
+            onError={() => {
+              console.log('Login Failed');
+            }}
+            useOneTap
+          />
+        </div>
 
         <div className="relative my-6">
           <Separator />
