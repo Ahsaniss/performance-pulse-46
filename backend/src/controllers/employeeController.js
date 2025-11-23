@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const bcrypt = require('bcryptjs');
 
 // @desc    Get all employees
 // @route   GET /api/employees
@@ -50,6 +51,14 @@ exports.createEmployee = async (req, res) => {
 // @access  Private/Admin
 exports.updateEmployee = async (req, res) => {
   try {
+    // Handle password update
+    if (req.body.password) {
+      const salt = await bcrypt.genSalt(10);
+      req.body.password = await bcrypt.hash(req.body.password, salt);
+    } else {
+      delete req.body.password;
+    }
+
     const employee = await User.findByIdAndUpdate(
       req.params.id,
       req.body,

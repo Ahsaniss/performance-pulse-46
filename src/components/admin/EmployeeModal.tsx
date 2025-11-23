@@ -45,6 +45,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
     department: '',
     position: '',
     role: 'employee' as 'employee' | 'admin',
+    password: '',
   });
 
   const employee = employees.find(emp => emp.id === employeeId);
@@ -58,6 +59,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
       department: employee.department,
       position: employee.position,
       role: employee.role || 'employee',
+      password: '',
     });
     setIsEditing(true);
   };
@@ -214,6 +216,18 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                         id="position"
                         value={editFormData.position}
                         onChange={(e) => setEditFormData({ ...editFormData, position: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="password">New Password (optional)</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={editFormData.password}
+                        onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                        placeholder="Leave blank to keep current"
                       />
                     </div>
                   </div>

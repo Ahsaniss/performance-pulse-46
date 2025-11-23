@@ -9,7 +9,6 @@ import {
 } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SignIn } from "./components/auth/SignIn";
-import { SignUp } from "./components/auth/SignUp";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
@@ -21,7 +20,6 @@ const router = createBrowserRouter(
   [
     { path: "/", element: <Navigate to="/signin" replace /> },
     { path: "/signin", element: <SignIn /> },
-    { path: "/signup", element: <SignUp /> },
     {
       path: "/admin",
       element: (

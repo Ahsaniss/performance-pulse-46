@@ -44,7 +44,7 @@ export const SignIn = () => {
           <p className="text-muted-foreground">Sign in to Performance Pulse</p>
         </div>
         
-        {/* Google Sign In */}
+        {/* Google Sign In
         <div className="flex justify-center mb-4">
           <GoogleLogin
             onSuccess={credentialResponse => {
@@ -57,7 +57,7 @@ export const SignIn = () => {
             }}
             useOneTap
           />
-        </div>
+        </div> */}
 
         <div className="relative my-6">
           <Separator />
@@ -120,12 +120,12 @@ export const SignIn = () => {
           <Button type="submit" className="w-full" disabled={isSubmitting || isLoading}>
             {isSubmitting ? 'Signing In...' : 'Sign In'}
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
+       { /* <p className="text-center text-sm text-muted-foreground">
             Don't have an account?{' '}
             <a href="/signup" className="text-primary hover:underline">
               Sign Up
             </a>
-          </p>
+          </p> */}
         </form>
       </Card>
     </div>
