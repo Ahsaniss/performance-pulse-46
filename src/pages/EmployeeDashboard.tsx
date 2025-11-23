@@ -16,6 +16,7 @@ import { useMessages } from "@/hooks/useMessages";
 import { useMeetings } from "@/hooks/useMeetings";
 import { useEvaluations } from "@/hooks/useEvaluations";
 import { Task } from "@/types";
+import { getAvatarUrl } from "@/lib/utils";
 
 interface TaskStats {
   completed: number;

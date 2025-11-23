@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Employee } from '@/types';
 import { Mail, MapPin, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getAvatarUrl } from '@/lib/utils';
 
 interface EmployeeGridProps {
   employees: Employee[];
@@ -34,9 +35,9 @@ export const EmployeeGrid = ({ employees, onEmployeeClick, onEmployeeNavigate }:
         >
           <div className="flex flex-col items-center text-center space-y-4">
             <img
-              src={employee.avatar}
+              src={getAvatarUrl(employee.avatar, employee.name)}
               alt={employee.name}
-              className="w-20 h-20 rounded-full border-2 border-primary"
+              className="w-20 h-20 rounded-full border-2 border-primary object-cover"
             />
             <div className="w-full">
               <h3 className="font-bold text-lg">{employee.name}</h3>

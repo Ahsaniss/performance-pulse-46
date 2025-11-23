@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Mail } from "lucide-react";
 import { useProfiles } from "@/hooks/useProfiles";
+import { getAvatarUrl } from "@/lib/utils";
 
 export const EmployeeList = () => {
   const { profiles: employees, loading } = useProfiles();
@@ -41,6 +42,7 @@ export const EmployeeList = () => {
         >
           <div className="flex items-start gap-4">
             <Avatar className="h-12 w-12 border-2 border-primary">
+              <AvatarImage src={getAvatarUrl(employee.avatar_url, employee.email)} alt={employee.full_name} className="object-cover" />
               <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                 {getInitials(employee.full_name)}
               </AvatarFallback>

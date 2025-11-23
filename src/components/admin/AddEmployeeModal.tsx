@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEmployees } from '@/hooks/useEmployees';
+import api from '@/lib/api';
 
 interface AddEmployeeModalProps {
   onClose: () => void;
@@ -22,7 +23,32 @@ export const AddEmployeeModal = ({ onClose }: AddEmployeeModalProps) => {
     department: '',
     position: '',
     role: 'employee' as 'admin' | 'employee',
+    avatar: '',
   });
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const uploadFormData = new FormData();
+    uploadFormData.append('image', file);
+
+    try {
+      const response = await api.post('/upload', uploadFormData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      if (response.data.success) {
+        setFormData(prev => ({ ...prev, avatar: response.data.filename }));
+        toast.success('Image uploaded successfully');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload image');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +84,36 @@ export const AddEmployeeModal = ({ onClose }: AddEmployeeModalProps) => {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <div className="flex flex-col items-center gap-4 mb-4">
+            <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+              {formData.avatar ? (
+                <img 
+                  src={formData.avatar.startsWith('http') ? formData.avatar : `http://localhost:5000/uploads/${formData.avatar}`} 
+                  alt="Preview" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <UserPlus className="w-8 h-8 text-gray-400" />
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                id="avatar-upload"
+                onChange={handleFileChange}
+              />
+              <Label
+                htmlFor="avatar-upload"
+                className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                Upload Photo
+              </Label>
+            </div>
+          </div>
+
           <div>
             <Label htmlFor="name">Full Name</Label>
             <Input

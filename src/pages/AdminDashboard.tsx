@@ -20,6 +20,7 @@ import { useTasks } from "@/hooks/useTasks";
 import { useMeetings } from "@/hooks/useMeetings";
 import { useEvaluations } from "@/hooks/useEvaluations";
 import { toast } from "sonner";
+import { getAvatarUrl } from "@/lib/utils";
 
 export const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -127,7 +128,7 @@ export const AdminDashboard = () => {
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <img src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`} alt={user?.name} className="w-10 h-10 rounded-full" />
+                <img src={getAvatarUrl(user?.avatar, user?.email)} alt={user?.name} className="w-10 h-10 rounded-full object-cover" />
                 <div className="text-right hidden md:block">
                   <p className="text-sm font-semibold">{user?.name}</p>
                   <p className="text-xs text-muted-foreground">{user?.email}</p>

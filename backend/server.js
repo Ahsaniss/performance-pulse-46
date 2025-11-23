@@ -11,6 +11,8 @@ connectDB();
 
 const app = express();
 
+const path = require('path');
+
 // Middleware
 app.use(cors({
   origin: [
@@ -24,6 +26,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Routes
 app.use('/api/auth', require('./src/routes/auth'));
 app.use('/api/employees', require('./src/routes/employees'));
@@ -32,6 +37,7 @@ app.use('/api/messages', require('./src/routes/messages'));
 app.use('/api/meetings', require('./src/routes/meetings'));
 app.use('/api/evaluations', require('./src/routes/evaluations'));
 app.use('/api/attendance', require('./src/routes/attendance'));
+app.use('/api/upload', require('./src/routes/upload'));
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { X, Mail, Calendar, MapPin, Plus, CheckCircle2, Clock, AlertCircle, Download, MessageSquare, Video, Trash2, Pencil } from 'lucide-react';
+import { X, Mail, Calendar, MapPin, Plus, CheckCircle2, Clock, AlertCircle, Download, MessageSquare, Video, Trash2, Pencil, Upload } from 'lucide-react';
 import { PerformanceChart } from '@/components/admin/PerformanceChart';
 import { CreateTaskModal } from '@/components/admin/CreateTaskModal';
 import { AddEvaluationModal } from '@/components/admin/AddEvaluationModal';
@@ -19,6 +19,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getAvatarUrl } from '@/lib/utils';
+import api from '@/lib/api';
+import { toast } from 'sonner';
 
 interface EmployeeModalProps {
   employeeId: string;
@@ -46,6 +49,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
     position: '',
     role: 'employee' as 'employee' | 'admin',
     password: '',
+    avatar: '',
   });
 
   const employee = employees.find(emp => emp.id === employeeId);
@@ -60,8 +64,33 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
       position: employee.position,
       role: employee.role || 'employee',
       password: '',
+      avatar: employee.avatar || '',
     });
     setIsEditing(true);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await api.post('/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      if (response.data.success) {
+        setEditFormData({ ...editFormData, avatar: response.data.filename });
+        toast.success('Image uploaded successfully');
+      }
+    } catch (error) {
+      console.error('Upload failed', error);
+      toast.error('Failed to upload image');
+    }
   };
 
   const handleSave = async () => {
@@ -164,11 +193,30 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
 
           {/* Employee Header */}
           <div className="flex items-start gap-6 pb-6 border-b">
-            <img
-              src={employee.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${employee.name}`}
-              alt={employee.name}
-              className="w-24 h-24 rounded-full border-4 border-primary"
-            />
+            <div className="relative">
+              <img
+                src={isEditing ? getAvatarUrl(editFormData.avatar, editFormData.name) : getAvatarUrl(employee.avatar, employee.name)}
+                alt={employee.name}
+                className="w-24 h-24 rounded-full border-4 border-primary object-cover"
+              />
+              {isEditing && (
+                <div className="absolute bottom-0 right-0">
+                  <input
+                    type="file"
+                    id="avatar-upload"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                  />
+                  <Label
+                    htmlFor="avatar-upload"
+                    className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full cursor-pointer hover:bg-primary/90"
+                  >
+                    <Upload className="w-4 h-4" />
+                  </Label>
+                </div>
+              )}
+            </div>
             <div className="flex-1">
               {isEditing ? (
                 <div className="grid gap-4 py-4">
