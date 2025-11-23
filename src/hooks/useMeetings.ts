@@ -21,7 +21,7 @@ export const useMeetings = (userId?: string) => {
       }
       return [];
     },
-    enabled: !!userId,
+    enabled: true,
   });
 
   const createMeetingMutation = useMutation({

@@ -1,4 +1,18 @@
 const Evaluation = require('../models/Evaluation');
+const User = require('../models/User');
+
+// Helper to update employee performance score
+const updateEmployeePerformance = async (employeeId) => {
+  try {
+    const evaluations = await Evaluation.find({ employeeId });
+    const totalScore = evaluations.reduce((acc, curr) => acc + curr.score, 0);
+    const avgScore = evaluations.length > 0 ? Number((totalScore / evaluations.length).toFixed(1)) : 0;
+    
+    await User.findByIdAndUpdate(employeeId, { performanceScore: avgScore });
+  } catch (error) {
+    console.error('Error updating employee performance:', error);
+  }
+};
 
 // @desc    Get all evaluations
 // @route   GET /api/evaluations
@@ -43,6 +57,9 @@ exports.createEvaluation = async (req, res) => {
       ...req.body,
       evaluatedBy: req.user.id
     });
+    
+    await updateEmployeePerformance(evaluation.employeeId);
+    
     res.status(201).json({ success: true, data: evaluation });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -62,6 +79,9 @@ exports.updateEvaluation = async (req, res) => {
     if (!evaluation) {
       return res.status(404).json({ success: false, message: 'Evaluation not found' });
     }
+
+    await updateEmployeePerformance(evaluation.employeeId);
+
     res.json({ success: true, data: evaluation });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -77,6 +97,9 @@ exports.deleteEvaluation = async (req, res) => {
     if (!evaluation) {
       return res.status(404).json({ success: false, message: 'Evaluation not found' });
     }
+
+    await updateEmployeePerformance(evaluation.employeeId);
+
     res.json({ success: true, message: 'Evaluation deleted' });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });

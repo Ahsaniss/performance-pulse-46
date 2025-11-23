@@ -414,7 +414,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-primary">{evaluation.score}/100</div>
+                          <div className="text-2xl font-bold text-primary">{evaluation.score}/5.0</div>
                           <p className="text-sm text-muted-foreground">Score</p>
                         </div>
                         <Button

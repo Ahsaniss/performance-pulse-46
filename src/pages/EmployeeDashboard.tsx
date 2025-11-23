@@ -398,7 +398,7 @@ const EmployeeDashboard = () => {
                             <p className="mt-1">{evaluation.comments}</p>
                           </div>
                           <Badge className="bg-primary/10 text-primary">
-                            Score: {evaluation.score}/100
+                            Score: {evaluation.score}/5.0
                           </Badge>
                         </div>
                       </Card>

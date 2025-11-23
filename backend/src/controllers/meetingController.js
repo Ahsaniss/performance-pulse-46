@@ -5,13 +5,29 @@ const Meeting = require('../models/Meeting');
 // @access  Private
 exports.getMeetings = async (req, res) => {
   try {
-    const userId = req.query.userId || req.user.id;
-    const meetings = await Meeting.find({
-      $or: [
-        { scheduledBy: userId },
-        { attendees: userId }
-      ]
-    })
+    let query = {};
+
+    // If user is NOT admin, restrict to their meetings
+    if (req.user.role !== 'admin') {
+      query = {
+        $or: [
+          { scheduledBy: req.user.id },
+          { attendees: req.user.id }
+        ]
+      };
+    }
+    // If user IS admin, check if they want to filter by a specific user
+    else if (req.query.userId) {
+      query = {
+        $or: [
+          { scheduledBy: req.query.userId },
+          { attendees: req.query.userId }
+        ]
+      };
+    }
+    // If admin and no userId param, query remains {} (fetch all)
+
+    const meetings = await Meeting.find(query)
     .populate('scheduledBy', 'name email')
     .populate('attendees', 'name email')
     .sort('-date');
