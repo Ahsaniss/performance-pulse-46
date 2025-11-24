@@ -3,9 +3,14 @@ import { useEvaluations } from "@/hooks/useEvaluations";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemo } from "react";
 
-export const PersonalPerformanceChart = () => {
+interface PersonalPerformanceChartProps {
+  userId?: string;
+}
+
+export const PersonalPerformanceChart = ({ userId }: PersonalPerformanceChartProps) => {
   const { user } = useAuth();
-  const { evaluations } = useEvaluations(user?.id);
+  const targetId = userId || user?.id;
+  const { evaluations } = useEvaluations(targetId);
 
   const data = useMemo(() => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -40,7 +45,8 @@ export const PersonalPerformanceChart = () => {
     // Calculate averages
     return last6Months.map(m => ({
       month: m.month,
-      performance: m.evalCount > 0 ? Number((m.performance / m.evalCount).toFixed(1)) : null
+      performance: m.evalCount > 0 ? Number((m.performance / m.evalCount).toFixed(1)) : 0,
+      hasData: m.evalCount > 0
     }));
   }, [evaluations]);
 
@@ -56,7 +62,7 @@ export const PersonalPerformanceChart = () => {
             border: "1px solid hsl(var(--border))",
             borderRadius: "var(--radius)"
           }}
-          formatter={(value: number | null) => [value ? value : 'No Data', 'Score']}
+          formatter={(value: number, name: string, props: any) => [props.payload.hasData ? value : 'No Data', 'Score']}
         />
         <Line 
           connectNulls

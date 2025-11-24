@@ -384,7 +384,7 @@ const EmployeeDashboard = () => {
               <h3 className="text-xl font-bold mb-4">Performance Overview</h3>
               {evaluations.length > 0 ? (
                 <div className="space-y-6">
-                  <PersonalPerformanceChart />
+                  <PersonalPerformanceChart userId={targetUserId} />
                   <div className="mt-6">
                     <h4 className="font-semibold mb-3">Recent Evaluations</h4>
                     {evaluations.slice(0, 3).map((evaluation) => (
