@@ -11,10 +11,12 @@ export const useEmployees = () => {
     queryFn: async () => {
       const response = await api.get('/employees');
       if (response.data.success) {
-        return response.data.data.map((emp: any) => ({
-          ...emp,
-          id: emp._id, // Map _id to id
-        }));
+        return response.data.data
+          .map((emp: any) => ({
+            ...emp,
+            id: emp._id, // Map _id to id
+          }))
+          .filter((emp: any) => emp.role !== 'admin');
       }
       return [];
     },
