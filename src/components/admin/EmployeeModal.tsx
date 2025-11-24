@@ -84,7 +84,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
       });
       
       if (response.data.success) {
-        setEditFormData({ ...editFormData, avatar: response.data.filename });
+        setEditFormData({ ...editFormData, avatar: response.data.data });
         toast.success('Image uploaded successfully');
       }
     } catch (error) {

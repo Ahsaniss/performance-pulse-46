@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { useEmployees } from '@/hooks/useEmployees';
 import api from '@/lib/api';
 
+import { getAvatarUrl } from '@/lib/utils';
+
 interface AddEmployeeModalProps {
   onClose: () => void;
 }
@@ -41,7 +43,8 @@ export const AddEmployeeModal = ({ onClose }: AddEmployeeModalProps) => {
       });
       
       if (response.data.success) {
-        setFormData(prev => ({ ...prev, avatar: response.data.filename }));
+        // Use the full path returned by the server
+        setFormData(prev => ({ ...prev, avatar: response.data.data }));
         toast.success('Image uploaded successfully');
       }
     } catch (error) {
@@ -88,7 +91,7 @@ export const AddEmployeeModal = ({ onClose }: AddEmployeeModalProps) => {
             <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
               {formData.avatar ? (
                 <img 
-                  src={formData.avatar.startsWith('http') ? formData.avatar : `http://localhost:5000/uploads/${formData.avatar}`} 
+                  src={getAvatarUrl(formData.avatar, formData.name)} 
                   alt="Preview" 
                   className="w-full h-full object-cover"
                 />

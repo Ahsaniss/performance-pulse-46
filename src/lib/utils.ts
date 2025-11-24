@@ -12,7 +12,20 @@ export const getAvatarUrl = (avatarPath: string | undefined, name: string) => {
   if (avatarPath.startsWith('http') || avatarPath.startsWith('data:')) {
     return avatarPath;
   }
+  
   // Assuming backend is on localhost:5000
-  const baseUrl = 'http://localhost:5000'; 
-  return `${baseUrl}${avatarPath}`;
+  const baseUrl = 'http://localhost:5000';
+  
+  // If path doesn't start with /, add it
+  let cleanPath = avatarPath;
+  if (!cleanPath.startsWith('/')) {
+    cleanPath = `/${cleanPath}`;
+  }
+  
+  // If path doesn't include uploads/ and it's not an external url, assume it's in uploads
+  if (!cleanPath.startsWith('/uploads/')) {
+    cleanPath = `/uploads${cleanPath}`;
+  }
+
+  return `${baseUrl}${cleanPath}`;
 };
