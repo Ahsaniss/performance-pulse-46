@@ -38,6 +38,8 @@ const EmployeeDashboard = () => {
   const { meetings, loading: meetingsLoading } = useMeetings(targetUserId);
   const { evaluations, loading: evaluationsLoading } = useEvaluations(targetUserId);
 
+  const isAdminView = user?.role === 'admin' && !!employeeId;
+
   const todayAttendance = getTodayAttendance();
   
   const taskStats = useMemo<TaskStats>(() => {
@@ -174,7 +176,7 @@ const EmployeeDashboard = () => {
             <Button 
               onClick={todayAttendance?.checkIn ? handleCheckOut : handleCheckIn} 
               size="lg"
-              disabled={!!todayAttendance?.checkOut}
+              disabled={!!todayAttendance?.checkOut || isAdminView}
             >
               <Clock className="w-5 h-5 mr-2" />
               {todayAttendance?.checkOut ? 'Checked Out' : todayAttendance?.checkIn ? 'Check Out' : 'Check In'}
@@ -282,6 +284,7 @@ const EmployeeDashboard = () => {
                       <Select
                         value={task.status}
                         onValueChange={(value) => handleTaskStatusUpdate(task.id, value as Task['status'])}
+                        disabled={isAdminView}
                       >
                         <SelectTrigger className="w-[140px] h-8 text-xs">
                           <SelectValue placeholder="Status" />
