@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { X, Mail, Calendar, MapPin, Plus, CheckCircle2, Clock, AlertCircle, Download, MessageSquare, Video, Trash2, Pencil, Upload } from 'lucide-react';
+import { X, Mail, Calendar, MapPin, Plus, CheckCircle2, Clock, AlertCircle, Download, MessageSquare, Video, Trash2, Pencil, Upload, Eye, EyeOff } from 'lucide-react';
 import { PerformanceChart } from '@/components/admin/PerformanceChart';
 import { CreateTaskModal } from '@/components/admin/CreateTaskModal';
 import { AddEvaluationModal } from '@/components/admin/AddEvaluationModal';
@@ -42,6 +42,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
   const [itemToDelete, setItemToDelete] = useState<{ type: 'task' | 'evaluation' | 'employee', id: string } | null>(null);
   
   const [isEditing, setIsEditing] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [editFormData, setEditFormData] = useState({
     name: '',
     email: '',
@@ -270,13 +271,27 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="password">New Password (optional)</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={editFormData.password}
-                        onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
-                        placeholder="Leave blank to keep current"
-                      />
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          value={editFormData.password}
+                          onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                          placeholder="Leave blank to keep current"
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
