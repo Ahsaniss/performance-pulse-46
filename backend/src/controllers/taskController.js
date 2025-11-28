@@ -56,6 +56,14 @@ exports.updateTask = async (req, res) => {
     if (req.body.status === 'completed' && !req.body.completedAt) {
       req.body.completedAt = new Date();
     }
+    
+    // Set startedAt if status changes to in-progress
+    if (req.body.status === 'in-progress') {
+      const currentTask = await Task.findById(req.params.id);
+      if (currentTask && !currentTask.startedAt) {
+        req.body.startedAt = new Date();
+      }
+    }
 
     const task = await Task.findByIdAndUpdate(
       req.params.id,
@@ -66,6 +74,57 @@ exports.updateTask = async (req, res) => {
     if (!task) {
       return res.status(404).json({ success: false, message: 'Task not found' });
     }
+
+    res.json({ success: true, data: task });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update task progress
+// @route   POST /api/tasks/:id/progress
+// @access  Private
+exports.updateTaskProgress = async (req, res) => {
+  try {
+    const { percentage, comment, strategy, blockers } = req.body;
+    const files = req.files || [];
+
+    const attachments = files.map(file => ({
+      filename: file.filename,
+      originalName: file.originalname,
+      path: file.path,
+      mimetype: file.mimetype
+    }));
+
+    const update = {
+      percentage: Number(percentage),
+      comment,
+      strategy,
+      blockers,
+      attachments,
+      updatedAt: new Date()
+    };
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ success: false, message: 'Task not found' });
+    }
+
+    task.progressUpdates.push(update);
+    task.currentProgress = Number(percentage);
+    
+    // Auto-update status based on progress
+    if (Number(percentage) === 100) {
+      task.status = 'completed';
+      task.completedAt = new Date();
+    } else if (Number(percentage) > 0 && task.status === 'pending') {
+      task.status = 'in-progress';
+      if (!task.startedAt) {
+        task.startedAt = new Date();
+      }
+    }
+
+    await task.save();
 
     res.json({ success: true, data: task });
   } catch (error) {

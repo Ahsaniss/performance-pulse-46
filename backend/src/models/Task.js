@@ -33,8 +33,36 @@ const taskSchema = new mongoose.Schema({
   deadline: {
     type: Date
   },
+  startedAt: {
+    type: Date
+  },
   completedAt: {
     type: Date
+  },
+  difficulty: {
+    type: String,
+    enum: ['low', 'medium', 'high'],
+    default: 'medium'
+  },
+  progressUpdates: [{
+    percentage: { type: Number, required: true, min: 0, max: 100 },
+    comment: { type: String },
+    strategy: { type: String },
+    blockers: { type: String },
+    attachments: [{
+      filename: String,
+      originalName: String,
+      path: String,
+      mimetype: String,
+      uploadedAt: { type: Date, default: Date.now }
+    }],
+    updatedAt: { type: Date, default: Date.now }
+  }],
+  currentProgress: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
   }
 }, {
   timestamps: true

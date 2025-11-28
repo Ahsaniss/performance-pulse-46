@@ -5,9 +5,11 @@ const {
   getTask,
   createTask,
   updateTask,
-  deleteTask
+  deleteTask,
+  updateTaskProgress
 } = require('../controllers/taskController');
 const { protect, admin } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 router.route('/')
   .get(protect, getTasks)
@@ -17,5 +19,8 @@ router.route('/:id')
   .get(protect, getTask)
   .put(protect, updateTask)
   .delete(protect, admin, deleteTask);
+
+router.route('/:id/progress')
+  .post(protect, upload.array('documents', 5), updateTaskProgress);
 
 module.exports = router;

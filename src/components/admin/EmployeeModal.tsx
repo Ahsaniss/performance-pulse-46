@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { X, Mail, Calendar, MapPin, Plus, CheckCircle2, Clock, AlertCircle, Download, MessageSquare, Video, Trash2, Pencil, Upload, Eye, EyeOff } from 'lucide-react';
+import { X, Mail, Calendar, MapPin, Plus, CheckCircle2, Clock, AlertCircle, Download, MessageSquare, Video, Trash2, Pencil, Upload, Eye, EyeOff, Maximize2, Minimize2 } from 'lucide-react';
 import { PerformanceChart } from '@/components/admin/PerformanceChart';
+import { EmployeeMISDashboard } from '@/components/admin/EmployeeMISDashboard';
 import { CreateTaskModal } from '@/components/admin/CreateTaskModal';
 import { AddEvaluationModal } from '@/components/admin/AddEvaluationModal';
 import { SendMessageModal } from '@/components/admin/SendMessageModal';
@@ -14,6 +15,7 @@ import { useTasks } from '@/hooks/useTasks';
 import { useEvaluations } from '@/hooks/useEvaluations';
 import { useAttendance } from '@/hooks/useAttendance';
 import { useEmployees } from '@/hooks/useEmployees';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import { exportToCSV, exportToPDF } from '@/lib/exportUtils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
@@ -33,7 +35,13 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
   const { tasks, deleteTask } = useTasks(employeeId);
   const { evaluations, deleteEvaluation } = useEvaluations(employeeId);
   const { attendance } = useAttendance(employeeId);
+  const { analytics, loading: analyticsLoading, refetch: refetchAnalytics } = useAnalytics(employeeId);
   
+  // Refetch analytics when tasks change to ensure graphs are real-time
+  useEffect(() => {
+    refetchAnalytics();
+  }, [tasks]);
+
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [showAddEvaluationModal, setShowAddEvaluationModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -42,6 +50,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
   const [itemToDelete, setItemToDelete] = useState<{ type: 'task' | 'evaluation' | 'employee', id: string } | null>(null);
   
   const [isEditing, setIsEditing] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [editFormData, setEditFormData] = useState({
     name: '',
@@ -150,7 +159,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
   return (
     <>
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className={isFullScreen ? "max-w-[100vw] w-screen h-screen max-h-screen rounded-none overflow-y-auto" : "max-w-7xl max-h-[90vh] overflow-y-auto"}>
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Employee Dashboard</span>
@@ -346,8 +355,9 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
           </div>
 
           <Tabs defaultValue="tasks" className="mt-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="tasks">Tasks</TabsTrigger>
+              <TabsTrigger value="progress">Progress</TabsTrigger>
               <TabsTrigger value="evaluations">Evaluations</TabsTrigger>
               <TabsTrigger value="attendance">Attendance</TabsTrigger>
               <TabsTrigger value="performance">Performance</TabsTrigger>
@@ -443,6 +453,78 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                     </Card>
                   ))
                 )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="progress" className="space-y-4 mt-4">
+              <h3 className="text-lg font-semibold">Progress Reports</h3>
+              <div className="space-y-6">
+                {tasks.flatMap(t => (t.progressUpdates || []).map(u => ({ ...u, taskTitle: t.title, taskId: t.id })))
+                  .sort((a, b) => new Date(b.timestamp || b.updatedAt).getTime() - new Date(a.timestamp || a.updatedAt).getTime())
+                  .length === 0 ? (
+                    <Card className="p-8 text-center">
+                      <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground">No progress reports submitted yet</p>
+                    </Card>
+                  ) : (
+                    tasks.flatMap(t => (t.progressUpdates || []).map(u => ({ ...u, taskTitle: t.title, taskId: t.id })))
+                      .sort((a, b) => new Date(b.timestamp || b.updatedAt).getTime() - new Date(a.timestamp || a.updatedAt).getTime())
+                      .map((update, idx) => (
+                        <Card key={idx} className="p-6">
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <h4 className="font-semibold text-lg">{update.taskTitle}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(update.timestamp || update.updatedAt).toLocaleString()}
+                              </p>
+                            </div>
+                            <Badge className="text-md px-3 py-1">{update.percentage}% Completed</Badge>
+                          </div>
+                          
+                          <div className="space-y-4">
+                            <div>
+                              <h5 className="text-sm font-semibold text-gray-700 mb-1">Progress Description</h5>
+                              <p className="text-gray-600 bg-gray-50 p-3 rounded-md">{update.comment}</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {update.strategy && (
+                                <div>
+                                  <h5 className="text-sm font-semibold text-blue-700 mb-1">Strategy / Approach</h5>
+                                  <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md">{update.strategy}</p>
+                                </div>
+                              )}
+                              {update.blockers && (
+                                <div>
+                                  <h5 className="text-sm font-semibold text-red-700 mb-1">Blockers / Challenges</h5>
+                                  <p className="text-sm text-gray-600 bg-red-50 p-3 rounded-md">{update.blockers}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {update.attachments && update.attachments.length > 0 && (
+                              <div>
+                                <h5 className="text-sm font-semibold text-gray-700 mb-2">Attachments</h5>
+                                <div className="flex flex-wrap gap-2">
+                                  {update.attachments.map((file: any, i: number) => (
+                                    <a 
+                                      key={i} 
+                                      href={`http://localhost:5000/${file.path}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-md hover:bg-gray-50 transition-colors text-sm text-blue-600 hover:underline"
+                                    >
+                                      <Download className="w-4 h-4" />
+                                      <span className="truncate max-w-[200px]">{file.originalName}</span>
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      ))
+                  )}
               </div>
             </TabsContent>
 
@@ -553,8 +635,20 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
             </TabsContent>
 
             <TabsContent value="performance" className="space-y-4 mt-4">
-              <h3 className="text-lg font-semibold">Performance Trends</h3>
-              <PerformanceChart employeeId={employeeId} />
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Performance Trends</h3>
+                <Button variant="outline" size="sm" onClick={() => setIsFullScreen(!isFullScreen)}>
+                  {isFullScreen ? <Minimize2 className="w-4 h-4 mr-2" /> : <Maximize2 className="w-4 h-4 mr-2" />}
+                  {isFullScreen ? "Exit Full Screen" : "Full Screen"}
+                </Button>
+              </div>
+              {analyticsLoading ? (
+                <div className="flex justify-center p-8">Loading analytics...</div>
+              ) : analytics ? (
+                <EmployeeMISDashboard analytics={analytics} employeeName={employee.name} />
+              ) : (
+                <PerformanceChart employeeId={employeeId} />
+              )}
             </TabsContent>
           </Tabs>
         </DialogContent>

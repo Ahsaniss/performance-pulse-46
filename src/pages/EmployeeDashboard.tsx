@@ -18,6 +18,8 @@ import { useEvaluations } from "@/hooks/useEvaluations";
 import { Task } from "@/types";
 import { getAvatarUrl } from "@/lib/utils";
 
+import { ProgressReportModal } from "@/components/employee/ProgressReportModal";
+
 interface TaskStats {
   completed: number;
   inProgress: number;
@@ -37,6 +39,7 @@ const EmployeeDashboard = () => {
   const { messages, loading: messagesLoading, markAsRead } = useMessages(targetUserId);
   const { meetings, loading: meetingsLoading } = useMeetings(targetUserId);
   const { evaluations, loading: evaluationsLoading } = useEvaluations(targetUserId);
+  const [selectedTaskForProgress, setSelectedTaskForProgress] = useState<Task | null>(null);
 
   const isAdminView = user?.role === 'admin' && !!employeeId;
 
@@ -239,6 +242,7 @@ const EmployeeDashboard = () => {
         <Tabs defaultValue="tasks" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
             <TabsTrigger value="tasks">My Tasks</TabsTrigger>
+            <TabsTrigger value="progress">Progress Reports</TabsTrigger>
             <TabsTrigger value="messages">Messages</TabsTrigger>
             <TabsTrigger value="meetings">Meetings</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
@@ -301,6 +305,98 @@ const EmployeeDashboard = () => {
                 </Card>
               ))
             )}
+          </TabsContent>
+
+          <TabsContent value="progress" className="space-y-6">
+            <div className="grid grid-cols-1 gap-6">
+              <Card className="p-6">
+                <h3 className="text-xl font-bold mb-4">Submit Progress Report</h3>
+                <p className="text-muted-foreground mb-4">Select an active task to submit a progress update, including work done, strategies, blockers, and file attachments.</p>
+                
+                <div className="space-y-4">
+                  {tasks.filter(t => t.status !== 'completed').length === 0 ? (
+                    <div className="text-center py-8 border rounded-lg bg-muted/20">
+                      <CheckCircle2 className="w-12 h-12 mx-auto text-green-500 mb-2" />
+                      <p>All tasks completed! No active tasks to report on.</p>
+                    </div>
+                  ) : (
+                    tasks.filter(t => t.status !== 'completed').map(task => (
+                      <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold">{task.title}</h4>
+                            <Badge variant="outline">{task.status}</Badge>
+                          </div>
+                          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                            <span>Current Progress: {task.currentProgress || 0}%</span>
+                            <span>•</span>
+                            <span>Due: {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}</span>
+                          </div>
+                        </div>
+                        <Button onClick={() => setSelectedTaskForProgress(task)}>
+                          Update Progress
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Card>
+
+              <Card className="p-6">
+                <h3 className="text-xl font-bold mb-4">Recent Progress History</h3>
+                <div className="space-y-6">
+                  {tasks.flatMap(t => (t.progressUpdates || []).map(u => ({ ...u, taskTitle: t.title, taskId: t.id })))
+                    .sort((a, b) => new Date(b.timestamp || b.updatedAt).getTime() - new Date(a.timestamp || a.updatedAt).getTime())
+                    .length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">No progress reports submitted yet.</p>
+                    ) : (
+                      tasks.flatMap(t => (t.progressUpdates || []).map(u => ({ ...u, taskTitle: t.title, taskId: t.id })))
+                        .sort((a, b) => new Date(b.timestamp || b.updatedAt).getTime() - new Date(a.timestamp || a.updatedAt).getTime())
+                        .map((update, idx) => (
+                          <div key={idx} className="border-l-2 border-primary pl-4 pb-6 last:pb-0">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h4 className="font-semibold">{update.taskTitle}</h4>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(update.timestamp || update.updatedAt).toLocaleString()}
+                                </p>
+                              </div>
+                              <Badge>{update.percentage}% Completed</Badge>
+                            </div>
+                            <p className="text-sm mb-2">{update.comment}</p>
+                            {update.strategy && (
+                              <div className="mb-2">
+                                <span className="text-xs font-semibold text-blue-600 uppercase">Strategy:</span>
+                                <p className="text-sm text-muted-foreground">{update.strategy}</p>
+                              </div>
+                            )}
+                            {update.blockers && (
+                              <div className="mb-2">
+                                <span className="text-xs font-semibold text-red-600 uppercase">Blockers:</span>
+                                <p className="text-sm text-muted-foreground">{update.blockers}</p>
+                              </div>
+                            )}
+                            {update.attachments && update.attachments.length > 0 && (
+                              <div className="flex gap-2 mt-2">
+                                {update.attachments.map((file: any, i: number) => (
+                                  <a 
+                                    key={i} 
+                                    href={`http://localhost:5000/${file.path}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-xs bg-gray-100 px-2 py-1 rounded flex items-center gap-1 hover:bg-gray-200"
+                                  >
+                                    <span className="truncate max-w-[150px]">{file.originalName}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                    )}
+                </div>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="messages" className="space-y-4">
@@ -450,6 +546,12 @@ const EmployeeDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+      {selectedTaskForProgress && (
+        <ProgressReportModal 
+          task={selectedTaskForProgress} 
+          onClose={() => setSelectedTaskForProgress(null)} 
+        />
+      )}
     </div>
   );
 };

@@ -1,27 +1,30 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, BarChart2, History } from "lucide-react";
 import { toast } from "sonner";
 import { useTasks } from "@/hooks/useTasks";
-
-interface Task {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  due_date: string | null;
-}
+import { ProgressUpdateModal } from "./ProgressUpdateModal";
+import { Task, TaskStatus } from "@/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface TaskListProps {
   employeeId?: string;
 }
 
 export const TaskList = ({ employeeId }: TaskListProps) => {
-  const { tasks, loading, updateTask } = useTasks(employeeId);
+  const { tasks, loading, updateTask, refetch } = useTasks(employeeId);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
+  const [historyTask, setHistoryTask] = useState<Task | null>(null);
 
-  const updateTaskStatus = async (taskId: string, newStatus: string) => {
+  const updateTaskStatus = async (taskId: string, newStatus: TaskStatus) => {
     try {
       await updateTask(taskId, { status: newStatus });
     } catch (error: any) {
@@ -58,6 +61,11 @@ export const TaskList = ({ employeeId }: TaskListProps) => {
     return variants[priority] || variants.low;
   };
 
+  const handleOpenProgressModal = (task: Task) => {
+    setSelectedTask(task);
+    setIsProgressModalOpen(true);
+  };
+
   if (loading) {
     return <div className="text-center py-8 text-muted-foreground">Loading tasks...</div>;
   }
@@ -80,9 +88,9 @@ export const TaskList = ({ employeeId }: TaskListProps) => {
               {task.description && (
                 <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
               )}
-              {task.due_date && (
+              {task.deadline && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Due: {new Date(task.due_date).toLocaleDateString()}
+                  Due: {new Date(task.deadline).toLocaleDateString()}
                 </p>
               )}
             </div>
@@ -94,6 +102,19 @@ export const TaskList = ({ employeeId }: TaskListProps) => {
             <Badge className={getStatusBadge(task.status)}>
               {task.status.replace("_", " ").toUpperCase()}
             </Badge>
+            
+            {/* View History Button */}
+            {(task.progressUpdates && task.progressUpdates.length > 0) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setHistoryTask(task)}
+                title="View History"
+              >
+                <History className="w-4 h-4" />
+              </Button>
+            )}
+
             {task.status === "pending" && (
               <Button
                 size="sm"
@@ -104,17 +125,64 @@ export const TaskList = ({ employeeId }: TaskListProps) => {
               </Button>
             )}
             {task.status === "in_progress" && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => updateTaskStatus(task.id, "completed")}
-              >
-                Complete
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleOpenProgressModal(task)}
+                >
+                  <BarChart2 className="w-4 h-4 mr-1" />
+                  Report Progress
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => updateTaskStatus(task.id, "completed")}
+                >
+                  Complete
+                </Button>
+              </>
             )}
           </div>
         </div>
       ))}
+      
+      {selectedTask && (
+        <ProgressUpdateModal
+          isOpen={isProgressModalOpen}
+          onClose={() => setIsProgressModalOpen(false)}
+          taskId={selectedTask.id}
+          currentProgress={selectedTask.currentProgress || 0}
+          onUpdateSuccess={() => {
+            refetch();
+          }}
+        />
+      )}
+
+      {/* History Dialog */}
+      <Dialog open={!!historyTask} onOpenChange={(open) => !open && setHistoryTask(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Progress History: {historyTask?.title}</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-[300px] w-full rounded-md border p-4">
+            {historyTask?.progressUpdates?.slice().reverse().map((update, index) => (
+              <div key={index} className="mb-4 border-b pb-2 last:border-0">
+                <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                  <span>{update.timestamp ? new Date(update.timestamp).toLocaleString() : 'N/A'}</span>
+                  <Badge variant="outline">{update.percentage}%</Badge>
+                </div>
+                <p className="text-sm font-medium">{update.comment}</p>
+                {update.strategy && <p className="text-xs text-muted-foreground mt-1"><strong>Strategy:</strong> {update.strategy}</p>}
+                {update.blockers && <p className="text-xs text-red-500 mt-1"><strong>Blockers:</strong> {update.blockers}</p>}
+              </div>
+            ))}
+            {(!historyTask?.progressUpdates || historyTask.progressUpdates.length === 0) && (
+              <p className="text-center text-muted-foreground">No updates yet.</p>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

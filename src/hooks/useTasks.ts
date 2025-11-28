@@ -66,12 +66,29 @@ export const useTasks = (employeeId?: string) => {
     },
   });
 
+  const addProgressUpdateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: FormData }) => {
+      const response = await api.post(`/tasks/${id}/progress`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Progress updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update progress');
+    },
+  });
+
   return {
     tasks,
     loading,
     createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => createTaskMutation.mutateAsync(task),
     updateTask: (id: string, updates: Partial<Task>) => updateTaskMutation.mutateAsync({ id, updates }),
     deleteTask: (id: string) => deleteTaskMutation.mutateAsync(id),
+    addProgressUpdate: (id: string, data: FormData) => addProgressUpdateMutation.mutateAsync({ id, data }),
     refetch,
   };
 };

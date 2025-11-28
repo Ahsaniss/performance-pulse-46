@@ -36,7 +36,8 @@ export const PerformanceChart = ({ employeeId }: PerformanceChartProps) => {
         year: d.getFullYear(),
         monthIndex: d.getMonth(),
         performance: 0,
-        tasks: 0,
+        completed: 0,
+        pending: 0,
         evalCount: 0
       });
     }
@@ -63,7 +64,16 @@ export const PerformanceChart = ({ employeeId }: PerformanceChartProps) => {
         
         const monthData = last6Months.find(m => m.monthIndex === monthIndex && m.year === year);
         if (monthData) {
-          monthData.tasks += 1;
+          monthData.completed += 1;
+        }
+      } else if ((task.status === 'pending' || task.status === 'in-progress') && task.createdAt) {
+        const date = new Date(task.createdAt);
+        const monthIndex = date.getMonth();
+        const year = date.getFullYear();
+        
+        const monthData = last6Months.find(m => m.monthIndex === monthIndex && m.year === year);
+        if (monthData) {
+          monthData.pending += 1;
         }
       }
     });
@@ -72,7 +82,8 @@ export const PerformanceChart = ({ employeeId }: PerformanceChartProps) => {
     return last6Months.map(m => ({
       month: m.month,
       performance: m.evalCount > 0 ? Number((m.performance / m.evalCount).toFixed(1)) : null,
-      tasks: m.tasks
+      completed: m.completed,
+      pending: m.pending
     }));
   }, [evaluations, tasks]);
 
@@ -137,9 +148,17 @@ export const PerformanceChart = ({ employeeId }: PerformanceChartProps) => {
               
               <Bar 
                 yAxisId="right"
-                dataKey="tasks" 
+                dataKey="completed" 
                 name="Completed Tasks" 
                 fill="#3b82f6" 
+                radius={[4, 4, 0, 0]} 
+                barSize={20}
+              />
+              <Bar 
+                yAxisId="right"
+                dataKey="pending" 
+                name="Pending Tasks" 
+                fill="#f59e0b" 
                 radius={[4, 4, 0, 0]} 
                 barSize={20}
               />

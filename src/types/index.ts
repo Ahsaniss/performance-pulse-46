@@ -14,6 +14,7 @@ export interface Employee {
 
 export type TaskStatus = 'pending' | 'in-progress' | 'in_progress' | 'completed';
 export type TaskPriority = 'low' | 'medium' | 'high';
+export type TaskDifficulty = 'easy' | 'medium' | 'hard' | 'low' | 'high';
 
 export interface Task {
   id: string;
@@ -23,10 +24,22 @@ export interface Task {
   assignedBy: string;
   status: TaskStatus;
   priority: TaskPriority;
+  difficulty?: TaskDifficulty;
+  currentProgress?: number;
+  progressUpdates?: ProgressUpdate[];
   deadline: string;
   createdAt: string;
   completedAt?: string;
   updatedAt?: string;
+}
+
+export interface ProgressUpdate {
+  percentage: number;
+  comment: string;
+  strategy?: string;
+  blockers?: string;
+  attachments?: string[];
+  timestamp: string;
 }
 
 export interface Message {
@@ -91,4 +104,28 @@ export interface Notification {
   createdAt: string;
   read: boolean;
   type: 'task' | 'message' | 'meeting' | 'evaluation';
+}
+
+export interface AnalyticsMetrics {
+  completionRate: number;
+  onTimeRate: number;
+  averageTurnaroundTime: number;
+  efficiencyScore: number;
+  tasksCompleted: number;
+  tasksPending: number;
+  tasksOverdue: number;
+}
+
+export interface AIInsight {
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
+}
+
+export interface EmployeeAnalytics {
+  employeeId: string;
+  metrics: AnalyticsMetrics;
+  aiInsight: AIInsight;
+  taskHistory: Task[];
 }

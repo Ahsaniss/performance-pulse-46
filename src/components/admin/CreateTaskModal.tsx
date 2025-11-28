@@ -26,6 +26,7 @@ export const CreateTaskModal = ({ onClose, preSelectedEmployeeId }: CreateTaskMo
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [difficulty, setDifficulty] = useState<'low' | 'medium' | 'high'>('medium');
   const [deadline, setDeadline] = useState<Date>();
 
   const handleCreate = async () => {
@@ -42,6 +43,7 @@ export const CreateTaskModal = ({ onClose, preSelectedEmployeeId }: CreateTaskMo
         assignedBy: '', // Backend handles this from token
         status: 'pending',
         priority,
+        difficulty,
         deadline: deadline.toISOString(),
       });
       onClose();
@@ -99,7 +101,7 @@ export const CreateTaskModal = ({ onClose, preSelectedEmployeeId }: CreateTaskMo
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <Label htmlFor="priority">Priority</Label>
               <Select value={priority} onValueChange={(val: any) => setPriority(val)}>
@@ -110,6 +112,20 @@ export const CreateTaskModal = ({ onClose, preSelectedEmployeeId }: CreateTaskMo
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="difficulty">Difficulty</Label>
+              <Select value={difficulty} onValueChange={(val: any) => setDifficulty(val)}>
+                <SelectTrigger id="difficulty">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Easy</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">Hard</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -6,6 +6,13 @@ const connectDB = require('./src/config/db');
 // Load environment variables
 dotenv.config();
 
+// Debug: Check if API Key is loaded
+if (process.env.GEMINI_API_KEY) {
+  console.log("✅ GEMINI_API_KEY loaded successfully");
+} else {
+  console.error("❌ GEMINI_API_KEY is missing in .env file");
+}
+
 // Connect to MongoDB
 connectDB();
 
@@ -19,6 +26,8 @@ app.use(cors({
     'http://localhost:5173',
     'http://localhost:8080',
     'http://localhost:8081',
+    'http://localhost:8082',
+    'http://localhost:8083',
     process.env.FRONTEND_URL
   ].filter(Boolean),
   credentials: true
@@ -37,6 +46,8 @@ app.use('/api/messages', require('./src/routes/messages'));
 app.use('/api/meetings', require('./src/routes/meetings'));
 app.use('/api/evaluations', require('./src/routes/evaluations'));
 app.use('/api/attendance', require('./src/routes/attendance'));
+app.use('/api/notifications', require('./src/routes/notifications'));
+app.use('/api/analytics', require('./src/routes/analytics'));
 app.use('/api/upload', require('./src/routes/upload'));
 
 // Health check
