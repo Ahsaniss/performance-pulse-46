@@ -1,10 +1,8 @@
 import axios from 'axios';
 
-// 🟢 ADD THIS LINE (Force the Railway URL):
-const API_URL = 'https://performance-pulse-46-production.up.railway.app/api';
-
+// Create an axios instance with default config
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
   },
