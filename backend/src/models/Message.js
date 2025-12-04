@@ -21,6 +21,12 @@ const messageSchema = new mongoose.Schema({
     required: [true, 'Content is required'],
     maxlength: [5000, 'Content cannot exceed 5000 characters']
   },
+  attachments: [{
+    filename: String,
+    path: String,
+    mimetype: String,
+    originalName: String
+  }],
   read: {
     type: Boolean,
     default: false

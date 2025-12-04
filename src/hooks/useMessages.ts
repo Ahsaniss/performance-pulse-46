@@ -25,7 +25,8 @@ export const useMessages = (userId?: string) => {
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: async (messageData: Partial<Message>) => {
+    mutationFn: async (messageData: Partial<Message> | FormData) => {
+      // Let axios handle the Content-Type for FormData to ensure the boundary is set correctly
       const response = await api.post('/messages', messageData);
       return response.data;
     },
@@ -54,7 +55,7 @@ export const useMessages = (userId?: string) => {
   return {
     messages,
     loading,
-    sendMessage: (messageData: Partial<Message>) => sendMessageMutation.mutateAsync(messageData),
+    sendMessage: (messageData: Partial<Message> | FormData) => sendMessageMutation.mutateAsync(messageData),
     markAsRead: (id: string) => markAsReadMutation.mutateAsync(id),
     refetch,
   };

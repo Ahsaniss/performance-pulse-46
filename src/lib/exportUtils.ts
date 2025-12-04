@@ -186,3 +186,39 @@ export const exportToPDF = (data: EmployeeData) => {
     toast.error('Failed to export PDF');
   }
 };
+
+export const exportPerformanceSummary = (employees: any[], tasks: any[], evaluations: any[]) => {
+  try {
+    const rows = employees.map((emp) => {
+      const empTasks = tasks.filter((task: any) => task.assignedTo === emp.id);
+      const completedCount = empTasks.filter((task: any) => task.status === 'completed').length;
+      const pendingCount = empTasks.length - completedCount;
+      const latestEvaluation = evaluations
+        .filter((evaluation: any) => evaluation.employeeId === emp.id)
+        .sort((a: any, b: any) => new Date(b.date || b.createdAt || '').getTime() - new Date(a.date || a.createdAt || '').getTime())[0];
+      return {
+        Name: emp.name,
+        Department: emp.department,
+        CompletedTasks: completedCount,
+        PendingTasks: pendingCount,
+        LatestScore: latestEvaluation?.score ?? 'N/A',
+        LastEvaluatedOn: latestEvaluation?.date ?? 'N/A',
+      };
+    });
+    const header = Object.keys(rows[0] ?? { Name: '', Department: '', CompletedTasks: 0, PendingTasks: 0, LatestScore: '', LastEvaluatedOn: '' });
+    const csv = [header.join(','), ...rows.map((row) => header.map((key) => `"${String((row as any)[key] ?? '')}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `performance-summary-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast.success('Performance summary exported');
+  } catch (error) {
+    console.error('Export failed:', error);
+    toast.error('Failed to export performance summary');
+  }
+};

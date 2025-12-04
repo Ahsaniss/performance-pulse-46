@@ -17,6 +17,7 @@ import { useMeetings } from "@/hooks/useMeetings";
 import { useEvaluations } from "@/hooks/useEvaluations";
 import { Task } from "@/types";
 import { getAvatarUrl } from "@/lib/utils";
+import ChatInterface from "@/components/chat/ChatInterface";
 
 import { ProgressReportModal } from "@/components/employee/ProgressReportModal";
 
@@ -240,7 +241,7 @@ const EmployeeDashboard = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="tasks" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="tasks">My Tasks</TabsTrigger>
             <TabsTrigger value="progress">Progress Reports</TabsTrigger>
             <TabsTrigger value="messages">Messages</TabsTrigger>
@@ -400,34 +401,10 @@ const EmployeeDashboard = () => {
           </TabsContent>
 
           <TabsContent value="messages" className="space-y-4">
-            {messages.length === 0 ? (
-              <Card className="p-12 text-center">
-                <AlertCircle className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No messages</h3>
-                <p className="text-muted-foreground">You don't have any messages at the moment.</p>
-              </Card>
-            ) : (
-              messages.map((message) => (
-                <Card
-                  key={message.id}
-                  className="p-6 cursor-pointer"
-                  onClick={() => !message.read && handleMarkMessageRead(message.id)}
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-semibold">{message.subject}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        From: {typeof message.from === 'string' ? message.from : message.from?.name || 'Admin'} • {new Date(message.timestamp).toLocaleDateString()}
-                      </p>
-                    </div>
-                    {!message.read && (
-                      <Badge className="bg-blue-500">New</Badge>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground">{message.content}</p>
-                </Card>
-              ))
-            )}
+            <ChatInterface 
+              defaultSelectedUser={isAdminView ? targetUserId : undefined}
+              hideSidebar={isAdminView}
+            />
           </TabsContent>
 
           <TabsContent value="meetings" className="space-y-4">
@@ -487,19 +464,49 @@ const EmployeeDashboard = () => {
                       <Card key={evaluation.id} className="p-4 mb-3">
                         <div className="flex justify-between items-start">
                           <div>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(evaluation.date).toLocaleDateString()}
-                            </p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(evaluation.date).toLocaleDateString()}
+                              </p>
+                              {evaluation.type === 'Automated' && (
+                                <Badge variant="secondary" className="text-xs">Automated</Badge>
+                              )}
+                            </div>
                             {evaluation.taskId && typeof evaluation.taskId === 'object' && (
                               <p className="text-sm font-medium text-primary mt-1">
                                 Task: {(evaluation.taskId as any).title}
                               </p>
                             )}
-                            <p className="mt-1">{evaluation.comments}</p>
+                            {evaluation.type === 'Automated' && evaluation.details ? (
+                              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                                <div className="bg-muted p-2 rounded">
+                                  <span className="block text-muted-foreground">Completion</span>
+                                  <span className="font-bold">{evaluation.details.taskCompletionRate}%</span>
+                                </div>
+                                <div className="bg-muted p-2 rounded">
+                                  <span className="block text-muted-foreground">On-Time</span>
+                                  <span className="font-bold">{evaluation.details.onTimeRate}%</span>
+                                </div>
+                                <div className="bg-muted p-2 rounded">
+                                  <span className="block text-muted-foreground">Communication</span>
+                                  <span className="font-bold">{evaluation.details.communicationScore}%</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="mt-1">{evaluation.comments}</p>
+                            )}
+                            {evaluation.feedback && (
+                              <p className="mt-2 text-sm italic text-muted-foreground">{evaluation.feedback}</p>
+                            )}
                           </div>
-                          <Badge className="bg-primary/10 text-primary">
-                            Score: {evaluation.score}/5.0
-                          </Badge>
+                          <div className="text-right">
+                            <Badge className="bg-primary/10 text-primary mb-1">
+                              Score: {evaluation.score}/100
+                            </Badge>
+                            {evaluation.rating && (
+                              <p className="text-xs font-semibold">{evaluation.rating}</p>
+                            )}
+                          </div>
                         </div>
                       </Card>
                     ))}

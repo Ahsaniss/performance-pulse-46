@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getAvatarUrl } from '@/lib/utils';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+import ChatInterface from '@/components/chat/ChatInterface';
 
 interface EmployeeModalProps {
   employeeId: string;
@@ -355,12 +356,13 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
           </div>
 
           <Tabs defaultValue="tasks" className="mt-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="tasks">Tasks</TabsTrigger>
               <TabsTrigger value="progress">Progress</TabsTrigger>
               <TabsTrigger value="evaluations">Evaluations</TabsTrigger>
               <TabsTrigger value="attendance">Attendance</TabsTrigger>
               <TabsTrigger value="performance">Performance</TabsTrigger>
+              <TabsTrigger value="messages">Messages</TabsTrigger>
             </TabsList>
 
             <TabsContent value="tasks" className="space-y-4 mt-4">
@@ -547,7 +549,12 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                   <Card key={evaluation.id} className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h4 className="font-semibold">Evaluation Report</h4>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold">Evaluation Report</h4>
+                          {evaluation.type === 'Automated' && (
+                            <Badge variant="secondary" className="text-xs">Automated</Badge>
+                          )}
+                        </div>
                         {evaluation.taskId && typeof evaluation.taskId === 'object' && (
                           <p className="text-sm font-medium text-primary">
                             Task: {(evaluation.taskId as any).title}
@@ -559,8 +566,11 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-primary">{evaluation.score}/5.0</div>
+                          <div className="text-2xl font-bold text-primary">{evaluation.score}/{evaluation.type === 'Automated' ? '100' : '5.0'}</div>
                           <p className="text-sm text-muted-foreground">Score</p>
+                          {evaluation.rating && (
+                            <p className="text-xs font-semibold mt-1">{evaluation.rating}</p>
+                          )}
                         </div>
                         <Button
                           variant="ghost"
@@ -575,19 +585,43 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Meetings Held</p>
-                        <p className="font-semibold">{evaluation.meetingsHeld || 0}</p>
+                    {evaluation.type === 'Automated' && evaluation.details ? (
+                      <div className="grid grid-cols-3 gap-4 mb-4">
+                        <div className="bg-muted p-3 rounded-lg text-center">
+                          <p className="text-sm text-muted-foreground mb-1">Completion Rate</p>
+                          <p className="text-xl font-bold">{evaluation.details.taskCompletionRate}%</p>
+                        </div>
+                        <div className="bg-muted p-3 rounded-lg text-center">
+                          <p className="text-sm text-muted-foreground mb-1">On-Time Rate</p>
+                          <p className="text-xl font-bold">{evaluation.details.onTimeRate}%</p>
+                        </div>
+                        <div className="bg-muted p-3 rounded-lg text-center">
+                          <p className="text-sm text-muted-foreground mb-1">Communication</p>
+                          <p className="text-xl font-bold">{evaluation.details.communicationScore}%</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Training Applied</p>
-                        <p className="font-semibold">{evaluation.trainingApplied || 0}</p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Meetings Held</p>
+                          <p className="font-semibold">{evaluation.meetingsHeld || 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Training Applied</p>
+                          <p className="font-semibold">{evaluation.trainingApplied || 0}</p>
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {evaluation.feedback && (
+                      <div className="pt-4 border-t mt-4">
+                        <p className="text-sm font-semibold mb-2">System Feedback:</p>
+                        <p className="text-sm text-muted-foreground italic">{evaluation.feedback}</p>
+                      </div>
+                    )}
 
                     {evaluation.outcomeSummary && (
-                      <div className="pt-4 border-t">
+                      <div className="pt-4 border-t mt-4">
                         <p className="text-sm font-semibold mb-2">Outcome Summary:</p>
                         <p className="text-sm text-muted-foreground">{evaluation.outcomeSummary}</p>
                       </div>
@@ -649,6 +683,10 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
               ) : (
                 <PerformanceChart employeeId={employeeId} />
               )}
+            </TabsContent>
+
+            <TabsContent value="messages" className="space-y-4 mt-4">
+              <ChatInterface defaultSelectedUser={employeeId} hideSidebar={true} />
             </TabsContent>
           </Tabs>
         </DialogContent>

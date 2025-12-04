@@ -1,5 +1,6 @@
 const Evaluation = require('../models/Evaluation');
 const User = require('../models/User');
+const automatedEvaluationService = require('../services/automatedEvaluationService');
 
 // Helper to update employee performance score
 const updateEmployeePerformance = async (employeeId) => {
@@ -103,5 +104,58 @@ exports.deleteEvaluation = async (req, res) => {
     res.json({ success: true, message: 'Evaluation deleted' });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Trigger automated evaluations for all employees for a specific month
+// @route   POST /api/evaluations/generate-automated
+// @access  Private/Admin
+exports.generateMonthlyEvaluations = async (req, res) => {
+  try {
+    const { month, year } = req.body; // e.g., { month: 5, year: 2024 }
+
+    if (!month || !year) {
+      return res.status(400).json({ success: false, message: 'Month and Year are required' });
+    }
+
+    // Get all employees (exclude admins if needed, or just role='employee')
+    const employees = await User.find({ role: 'employee' });
+    
+    const results = [];
+
+    // Run generation for each employee
+    for (const emp of employees) {
+      const evalData = await automatedEvaluationService.generateAutomatedEvaluation(
+        emp._id, 
+        month, 
+        year
+      );
+
+      // Save/Update Evaluation in DB
+      const evaluation = await Evaluation.findOneAndUpdate(
+        { employeeId: emp._id, month: month, year: year, type: 'Automated' },
+        {
+          ...evalData,
+          employeeId: emp._id,
+          evaluatedBy: req.user.id // The admin triggering this
+        },
+        { upsert: true, new: true }
+      );
+      
+      // Update user performance score
+      await updateEmployeePerformance(emp._id);
+
+      results.push(evaluation);
+    }
+
+    res.json({
+      success: true,
+      message: `Generated evaluations for ${results.length} employees.`,
+      data: results
+    });
+
+  } catch (error) {
+    console.error('Automated Evaluation Error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };

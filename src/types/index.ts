@@ -33,13 +33,21 @@ export interface Task {
   updatedAt?: string;
 }
 
+export interface Attachment {
+  filename: string;
+  originalName: string;
+  path: string;
+  mimetype: string;
+}
+
 export interface ProgressUpdate {
   percentage: number;
   comment: string;
   strategy?: string;
   blockers?: string;
-  attachments?: string[];
-  timestamp: string;
+  attachments?: Attachment[];
+  timestamp?: string;
+  updatedAt?: string;
 }
 
 export interface Message {
@@ -51,7 +59,7 @@ export interface Message {
   timestamp: string;
   read: boolean;
   type: 'individual' | 'broadcast';
-  attachments?: string[];
+  attachments?: Attachment[];
 }
 
 export interface Meeting {
@@ -85,6 +93,17 @@ export interface Evaluation {
   outcomeSummary?: string;
   previousWork?: string[];
   satisfactionScore?: number;
+  type?: 'Manual' | 'Automated';
+  rating?: string;
+  feedback?: string;
+  details?: {
+    taskCompletionRate: number;
+    onTimeRate: number;
+    communicationScore: number;
+    totalTasks: number;
+    completedTasks: number;
+    tasksWithUpdates: number;
+  };
 }
 
 export interface Attendance {

@@ -13,14 +13,36 @@ const evaluationSchema = new mongoose.Schema({
   },
   taskId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Task',
-    required: [true, 'Task ID is required']
+    ref: 'Task'
   },
   score: {
     type: Number,
     required: [true, 'Score is required'],
     min: 0,
     max: 100
+  },
+  type: {
+    type: String,
+    enum: ['Manual', 'Automated'],
+    default: 'Manual'
+  },
+  month: {
+    type: Number
+  },
+  year: {
+    type: Number
+  },
+  rating: {
+    type: String,
+    enum: ['Excellent', 'Good', 'Average', 'Needs Improvement']
+  },
+  details: {
+    taskCompletionRate: Number,
+    onTimeRate: Number,
+    communicationScore: Number,
+    totalTasks: Number,
+    completedTasks: Number,
+    tasksWithUpdates: Number
   },
   date: {
     type: Date,

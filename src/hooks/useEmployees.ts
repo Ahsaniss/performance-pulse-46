@@ -3,11 +3,11 @@ import api from '@/lib/api';
 import { Employee } from '@/types';
 import { toast } from 'sonner';
 
-export const useEmployees = () => {
+export const useEmployees = (options?: { includeAdmins?: boolean }) => {
   const queryClient = useQueryClient();
 
   const { data: employees = [], isLoading: loading, error } = useQuery({
-    queryKey: ['employees'],
+    queryKey: ['employees', options?.includeAdmins],
     queryFn: async () => {
       const response = await api.get('/employees');
       if (response.data.success) {
@@ -16,7 +16,7 @@ export const useEmployees = () => {
             ...emp,
             id: emp._id, // Map _id to id
           }))
-          .filter((emp: any) => emp.role !== 'admin');
+          .filter((emp: any) => options?.includeAdmins ? true : emp.role !== 'admin');
       }
       return [];
     },

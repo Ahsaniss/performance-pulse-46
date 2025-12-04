@@ -1,10 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { LogOut, LayoutDashboard, Users, Search, MessageSquare, Calendar, FileText, Plus } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, Search, MessageSquare, Calendar, FileText, Plus, Sparkles, Download } from "lucide-react";
 import { EmployeeGrid } from "@/components/admin/EmployeeGrid";
 import { EmployeeModal } from "@/components/admin/EmployeeModal";
 import { SendMessageModal } from "@/components/admin/SendMessageModal";
@@ -14,13 +14,16 @@ import { DepartmentStats } from "@/components/admin/DepartmentStats";
 import { AdminOverview } from "@/components/admin/AdminOverview";
 import { AddEmployeeModal } from "@/components/admin/AddEmployeeModal";
 import { AddEvaluationModal } from "@/components/admin/AddEvaluationModal";
+import { GenerateReportModal } from "@/components/admin/GenerateReportModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useTasks } from "@/hooks/useTasks";
 import { useMeetings } from "@/hooks/useMeetings";
 import { useEvaluations } from "@/hooks/useEvaluations";
-import { toast } from "sonner";
+import { useAdminStats } from "@/hooks/useAdminStats";
+import { exportPerformanceSummary } from "@/lib/exportUtils";
 import { getAvatarUrl } from "@/lib/utils";
+import ChatInterface from "@/components/chat/ChatInterface";
 
 export const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -37,30 +40,11 @@ export const AdminDashboard = () => {
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [showAddEvaluationModal, setShowAddEvaluationModal] = useState(false);
+  const [showGenerateReportModal, setShowGenerateReportModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
 
-  const stats = useMemo(() => {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    
-    const completedToday = tasks.filter((t: any) => {
-      if (t.status !== 'completed' || !t.updatedAt) return false;
-      const updatedDate = new Date(t.updatedAt);
-      return updatedDate >= todayStart;
-    });
-    
-    const pending = tasks.filter((t: any) => t.status !== 'completed');
-    
-    const avgScore = employees.length > 0
-      ? (employees.reduce((acc, p) => acc + (p.performanceScore || 0), 0) / employees.length).toFixed(1)
-      : '0.0';
-    
-    return {
-      completedTasksToday: completedToday.length,
-      pendingTasks: pending.length,
-      avgPerformance: avgScore,
-    };
-  }, [tasks, employees]);
+  const stats = useAdminStats(tasks, employees);
 
   const handleLogout = () => {
     logout();
@@ -79,38 +63,7 @@ export const AdminDashboard = () => {
   const handleExportReports = async () => {
     try {
       setIsExporting(true);
-      
-      const rows = employees.map((emp) => {
-        const empTasks = tasks.filter((task: any) => task.assignedTo === emp.id);
-        const completedCount = empTasks.filter((task: any) => task.status === 'completed').length;
-        const pendingCount = empTasks.length - completedCount;
-        const latestEvaluation = evaluations
-          .filter((evaluation: any) => evaluation.employeeId === emp.id)
-          .sort((a: any, b: any) => new Date(b.date || b.createdAt || '').getTime() - new Date(a.date || a.createdAt || '').getTime())[0];
-        return {
-          Name: emp.name,
-          Department: emp.department,
-          CompletedTasks: completedCount,
-          PendingTasks: pendingCount,
-          LatestScore: latestEvaluation?.score ?? 'N/A',
-          LastEvaluatedOn: latestEvaluation?.date ?? 'N/A',
-        };
-      });
-      const header = Object.keys(rows[0] ?? { Name: '', Department: '', CompletedTasks: 0, PendingTasks: 0, LatestScore: '', LastEvaluatedOn: '' });
-      const csv = [header.join(','), ...rows.map((row) => header.map((key) => `"${String((row as any)[key] ?? '')}"`).join(','))].join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `performance-summary-${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      toast.success('Performance summary exported');
-    } catch (error) {
-      console.error('Export failed:', error);
-      toast.error('Failed to export performance summary');
+      exportPerformanceSummary(employees, tasks, evaluations);
     } finally {
       setIsExporting(false);
     }
@@ -150,11 +103,12 @@ export const AdminDashboard = () => {
           <p className="text-muted-foreground">Here's what's happening in your organization today</p>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="employees">Employees</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="messages">Messages</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -168,42 +122,103 @@ export const AdminDashboard = () => {
             />
 
             {/* Quick Actions */}
-            <Card className="p-6">
-              <h3 className="text-xl font-bold mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Button onClick={() => setShowMessageModal(true)} className="h-auto py-4 flex flex-col gap-2">
-                  <MessageSquare className="w-6 h-6" />
-                  <span>Send Message</span>
-                </Button>
-                <Button onClick={() => setShowTaskModal(true)} className="h-auto py-4 flex flex-col gap-2">
-                  <Plus className="w-6 h-6" />
-                  <span>Assign Task</span>
-                </Button>
-                <Button onClick={() => setShowMeetingModal(true)} className="h-auto py-4 flex flex-col gap-2">
-                  <Calendar className="w-6 h-6" />
-                  <span>Schedule Meeting</span>
-                </Button>
-                <Button onClick={() => setShowAddEvaluationModal(true)} className="h-auto py-4 flex flex-col gap-2">
-                  <FileText className="w-6 h-6" />
-                  <span>Add Evaluation</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-auto py-4 flex flex-col gap-2 md:col-span-2"
-                  onClick={handleExportReports}
-                  disabled={isExporting}
-                >
-                  <FileText className="w-6 h-6" />
-                  <span>{isExporting ? 'Exporting…' : 'Export Performance (CSV)'}</span>
-                </Button>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div 
+                onClick={() => setShowMessageModal(true)}
+                className="bg-card p-6 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-500/10 text-blue-600 rounded-lg group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                    <MessageSquare className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Send Message</h3>
+                    <p className="text-sm text-muted-foreground">Broadcast or direct message</p>
+                  </div>
+                </div>
               </div>
-            </Card>
+
+              <div 
+                onClick={() => setShowTaskModal(true)}
+                className="bg-card p-6 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-green-500/10 text-green-600 rounded-lg group-hover:bg-green-500 group-hover:text-white transition-colors">
+                    <Plus className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Assign Task</h3>
+                    <p className="text-sm text-muted-foreground">Create new assignments</p>
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                onClick={() => setShowMeetingModal(true)}
+                className="bg-card p-6 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-purple-500/10 text-purple-600 rounded-lg group-hover:bg-purple-500 group-hover:text-white transition-colors">
+                    <Calendar className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Schedule Meeting</h3>
+                    <p className="text-sm text-muted-foreground">Set up team syncs</p>
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                onClick={() => setShowAddEvaluationModal(true)}
+                className="bg-card p-6 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-amber-500/10 text-amber-600 rounded-lg group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Add Evaluation</h3>
+                    <p className="text-sm text-muted-foreground">Manual performance review</p>
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                onClick={() => setShowGenerateReportModal(true)}
+                className="bg-card p-6 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-indigo-500/10 text-indigo-600 rounded-lg group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Generate Report</h3>
+                    <p className="text-sm text-muted-foreground">Automated monthly scoring</p>
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                onClick={handleExportReports}
+                className={`bg-card p-6 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer group ${isExporting ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-gray-500/10 text-gray-600 rounded-lg group-hover:bg-gray-500 group-hover:text-white transition-colors">
+                    <Download className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Export Data</h3>
+                    <p className="text-sm text-muted-foreground">Download CSV summary</p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* Recent Employees Preview */}
             <Card className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold">Recent Employees</h3>
-                <Button variant="link" onClick={() => document.querySelector('[value="employees"]')?.dispatchEvent(new Event('click'))}>
+                <Button variant="link" onClick={() => setActiveTab("employees")}>
                   View All <Users className="w-4 h-4 ml-2" />
                 </Button>
               </div>
@@ -264,6 +279,10 @@ export const AdminDashboard = () => {
           <TabsContent value="analytics" className="space-y-6">
             <DepartmentStats />
           </TabsContent>
+
+          <TabsContent value="messages" className="space-y-6">
+            <ChatInterface />
+          </TabsContent>
         </Tabs>
       </main>
 
@@ -302,6 +321,12 @@ export const AdminDashboard = () => {
       {showAddEvaluationModal && (
         <AddEvaluationModal
           onClose={() => setShowAddEvaluationModal(false)}
+        />
+      )}
+
+      {showGenerateReportModal && (
+        <GenerateReportModal
+          onClose={() => setShowGenerateReportModal(false)}
         />
       )}
     </div>
