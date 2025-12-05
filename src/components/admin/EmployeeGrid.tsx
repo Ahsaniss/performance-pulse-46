@@ -61,7 +61,7 @@ export const EmployeeGrid = ({ employees, onEmployeeClick, onEmployeeNavigate }:
               </Badge>
               <div className="flex items-center gap-1">
                 <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
-                <span className="font-semibold">{employee.performanceScore}</span>
+                <span className="font-semibold">{employee.performanceScore}/100</span>
               </div>
             </div>
             {onEmployeeNavigate && (

@@ -133,7 +133,7 @@ export const PerformanceChart = ({ employeeId }: PerformanceChartProps) => {
                 axisLine={false} 
                 tickLine={false} 
                 tick={{ fill: 'hsl(var(--muted-foreground))' }} 
-                domain={[0, 5]}
+                domain={[0, 100]}
                 tickCount={6}
               />
               <YAxis 

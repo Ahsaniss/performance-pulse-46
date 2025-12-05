@@ -245,7 +245,7 @@ export const DepartmentStats = () => {
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={true} stroke="hsl(var(--border))" />
                     <XAxis 
                       type="number" 
-                      domain={[0, 5]} 
+                      domain={[0, 100]} 
                       axisLine={true} 
                       tickLine={true}
                       tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}

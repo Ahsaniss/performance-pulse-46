@@ -50,7 +50,7 @@ export const AdminOverview = ({
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Avg Performance</p>
-            <p className="text-2xl font-bold">{avgPerformance}/5.0</p>
+            <p className="text-2xl font-bold">{avgPerformance}/100</p>
           </div>
         </div>
       </Card>

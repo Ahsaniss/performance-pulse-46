@@ -33,7 +33,7 @@ interface EmployeeModalProps {
 
 export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
   const { employees, deleteEmployee, updateEmployee } = useEmployees();
-  const { tasks, deleteTask } = useTasks(employeeId);
+  const { tasks, deleteTask, updateTask } = useTasks(employeeId);
   const { evaluations, deleteEvaluation } = useEvaluations(employeeId);
   const { attendance } = useAttendance(employeeId);
   const { analytics, loading: analyticsLoading, refetch: refetchAnalytics } = useAnalytics(employeeId);
@@ -329,7 +329,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
             <div className="text-right">
               <Badge className="mb-2">{employee.status || 'active'}</Badge>
               <div className="text-2xl font-bold text-primary">
-                {employee.performanceScore || 0}/5.0
+                {employee.performanceScore || 0}/100
               </div>
               <p className="text-sm text-muted-foreground">Performance Score</p>
             </div>
@@ -450,6 +450,31 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                           >
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t flex items-center justify-between bg-slate-50/50 p-2 rounded-md">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-muted-foreground">Progress Rating:</span>
+                          <div className="flex items-center gap-2">
+                            <Select 
+                              value={(task.progressRating ?? 0).toString()} 
+                              onValueChange={(val) => updateTask(task.id, { progressRating: parseInt(val) })}
+                            >
+                              <SelectTrigger className="w-[70px] h-8 bg-white">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {[0,1,2,3,4,5,6,7,8,9,10].map(n => (
+                                  <SelectItem key={n} value={n.toString()}>{n}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <span className="text-sm text-muted-foreground">/ 10</span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground italic">
+                          Rate the quality of progress updates
                         </div>
                       </div>
                     </Card>

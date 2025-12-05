@@ -138,7 +138,7 @@ export const exportToPDF = (data: EmployeeData) => {
             ${data.evaluations.map(evaluation => `
               <tr>
                 <td>${new Date(evaluation.date).toLocaleDateString()}</td>
-                <td>${evaluation.score}/5.0</td>
+                <td>${evaluation.score}/100</td>
                 <td>${evaluation.meetingsHeld || 0}</td>
                 <td>${evaluation.trainingApplied || 0}</td>
                 <td>${evaluation.outcomeSummary || 'N/A'}</td>

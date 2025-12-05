@@ -60,7 +60,7 @@ export const EvaluationTable = () => {
             <TableHead className="font-bold">Meetings Held</TableHead>
             <TableHead className="font-bold">Training Applied (%)</TableHead>
             <TableHead className="font-bold">Key Outcome</TableHead>
-            <TableHead className="font-bold">Satisfaction (1-5)</TableHead>
+            <TableHead className="font-bold">Satisfaction (1-100)</TableHead>
             <TableHead className="font-bold">Overall %</TableHead>
           </TableRow>
         </TableHeader>
@@ -81,7 +81,7 @@ export const EvaluationTable = () => {
               <TableCell className="max-w-xs">{row.outcome}</TableCell>
               <TableCell>
                 <Badge className={getSatisfactionColor(row.satisfaction)}>
-                  {row.satisfaction}
+                  {row.satisfaction * 20}
                 </Badge>
               </TableCell>
               <TableCell>

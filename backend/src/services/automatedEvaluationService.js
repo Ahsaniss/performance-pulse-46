@@ -35,7 +35,7 @@ exports.generateAutomatedEvaluation = async (userId, month, year) => {
   
   const onTimeRate = completedTasks === 0 ? 0 : (onTimeTasks / completedTasks) * 100;
 
-  // --- C. Communication Score (20%) ---
+  // --- C. Communication Score (30%) ---
   // Calculate based on how consistently the employee uses the 'Report Progress' feature.
   // Logic: A task is "Communicated" if the employee added at least 1 update (comment or file)
   const tasksWithUpdates = tasks.filter(t => {
@@ -44,9 +44,15 @@ exports.generateAutomatedEvaluation = async (userId, month, year) => {
 
   const communicationScore = totalTasks === 0 ? 0 : (tasksWithUpdates / totalTasks) * 100;
 
+  // --- D. Admin Rating Score (10%) ---
+  // Based on admin rating (0-10) for each task
+  const totalRating = tasks.reduce((sum, t) => sum + (t.progressRating || 0), 0);
+  // Calculate percentage: (Total Rating / (Total Tasks * 10)) * 100
+  const adminRatingScore = totalTasks === 0 ? 0 : (totalRating / (totalTasks * 10)) * 100;
+
   // --- FINAL WEIGHTED SCORE ---
-  // (Task Completion Rate * 0.40) + (On-Time Delivery * 0.40) + (Communication Score * 0.20)
-  const finalScore = (completionRate * 0.4) + (onTimeRate * 0.4) + (communicationScore * 0.2);
+  // (Task Completion Rate * 0.30) + (On-Time Delivery * 0.30) + (Communication Score * 0.30) + (Admin Rating Score * 0.10)
+  const finalScore = (completionRate * 0.3) + (onTimeRate * 0.3) + (communicationScore * 0.3) + (adminRatingScore * 0.1);
 
   // Determine Rating Label
   let ratingLabel = 'Needs Improvement';
@@ -66,11 +72,13 @@ exports.generateAutomatedEvaluation = async (userId, month, year) => {
       taskCompletionRate: Math.round(completionRate),
       onTimeRate: Math.round(onTimeRate),
       communicationScore: Math.round(communicationScore),
+      adminRatingScore: Math.round(adminRatingScore),
       totalTasks,
       completedTasks,
-      tasksWithUpdates
+      tasksWithUpdates,
+      averageAdminRating: totalTasks > 0 ? (totalRating / totalTasks).toFixed(1) : 0
     },
-    feedback: `System Generated: ${ratingLabel}. Employee provided updates on ${tasksWithUpdates}/${totalTasks} tasks.`,
+    feedback: `System Generated: ${ratingLabel}. Updates: ${tasksWithUpdates}/${totalTasks}. Avg Rating: ${(totalRating / (totalTasks || 1)).toFixed(1)}/10.`,
     type: 'Automated',
     month,
     year

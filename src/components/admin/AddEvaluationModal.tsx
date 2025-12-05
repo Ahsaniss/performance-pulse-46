@@ -33,7 +33,7 @@ export const AddEvaluationModal = ({ onClose, preSelectedEmployeeId }: AddEvalua
 
   const { tasks } = useTasks(formData.employeeId);
 
-  const overallScore = (formData.productivity + formData.quality + formData.teamwork + formData.communication) / 4;
+  const overallScore = ((formData.productivity + formData.quality + formData.teamwork + formData.communication) / 4) * 20; // Convert 5-scale to 100-scale
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +58,7 @@ export const AddEvaluationModal = ({ onClose, preSelectedEmployeeId }: AddEvalua
         employeeId: formData.employeeId,
         taskId: formData.taskId,
         evaluatedBy: user?.id || 'admin-001',
-        score: Number(overallScore.toFixed(1)),
+        score: Math.round(overallScore),
         date: new Date().toISOString(),
         comments: formData.comments,
         categories: {

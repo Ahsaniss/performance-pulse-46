@@ -55,7 +55,7 @@ export const PersonalPerformanceChart = ({ userId }: PersonalPerformanceChartPro
       <LineChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
-        <YAxis stroke="hsl(var(--muted-foreground))" domain={[0, 5]} tickCount={6} />
+        <YAxis stroke="hsl(var(--muted-foreground))" domain={[0, 100]} tickCount={6} />
         <Tooltip 
           contentStyle={{ 
             backgroundColor: "hsl(var(--card))", 

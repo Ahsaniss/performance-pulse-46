@@ -31,6 +31,7 @@ export interface Task {
   createdAt: string;
   completedAt?: string;
   updatedAt?: string;
+  progressRating?: number;
 }
 
 export interface Attachment {

@@ -63,6 +63,12 @@ const taskSchema = new mongoose.Schema({
     default: 0,
     min: 0,
     max: 100
+  },
+  progressRating: {
+    type: Number,
+    min: 0,
+    max: 10,
+    default: 0
   }
 }, {
   timestamps: true
