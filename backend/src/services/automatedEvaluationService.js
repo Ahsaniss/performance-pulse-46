@@ -45,10 +45,21 @@ exports.generateAutomatedEvaluation = async (userId, month, year) => {
   const communicationScore = totalTasks === 0 ? 0 : (tasksWithUpdates / totalTasks) * 100;
 
   // --- D. Admin Rating Score (10%) ---
-  // Based on admin rating (0-10) for each task
-  const totalRating = tasks.reduce((sum, t) => sum + (t.progressRating || 0), 0);
-  // Calculate percentage: (Total Rating / (Total Tasks * 10)) * 100
-  const adminRatingScore = totalTasks === 0 ? 0 : (totalRating / (totalTasks * 10)) * 100;
+  // Based on Manual Evaluations linked to Completed Tasks
+  // We fetch evaluations where the taskId matches one of the completed tasks in this period
+  const completedTaskIds = tasks.filter(t => t.status === 'completed').map(t => t._id);
+  
+  const evaluations = await Evaluation.find({
+    taskId: { $in: completedTaskIds },
+    employeeId: userId
+  });
+
+  const totalEvaluationScore = evaluations.reduce((sum, ev) => sum + (ev.score || 0), 0);
+  
+  // Calculate average score (0-100)
+  // We divide by completedTasks to ensure the score reflects the coverage of evaluations
+  // If a task is completed but not evaluated, it counts as 0, encouraging admins to evaluate all completed tasks.
+  const adminRatingScore = completedTasks === 0 ? 0 : (totalEvaluationScore / completedTasks);
 
   // --- FINAL WEIGHTED SCORE ---
   // (Task Completion Rate * 0.30) + (On-Time Delivery * 0.30) + (Communication Score * 0.30) + (Admin Rating Score * 0.10)
@@ -76,9 +87,9 @@ exports.generateAutomatedEvaluation = async (userId, month, year) => {
       totalTasks,
       completedTasks,
       tasksWithUpdates,
-      averageAdminRating: totalTasks > 0 ? (totalRating / totalTasks).toFixed(1) : 0
+      averageAdminRating: totalTasks > 0 ? (adminRatingScore / 20).toFixed(1) : 0
     },
-    feedback: `System Generated: ${ratingLabel}. Updates: ${tasksWithUpdates}/${totalTasks}. Avg Rating: ${(totalRating / (totalTasks || 1)).toFixed(1)}/10.`,
+    feedback: `System Generated: ${ratingLabel}. Updates: ${tasksWithUpdates}/${totalTasks}. Avg Rating: ${(adminRatingScore / 20).toFixed(1)}/5.`,
     type: 'Automated',
     month,
     year

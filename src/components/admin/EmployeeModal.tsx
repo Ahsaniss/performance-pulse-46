@@ -453,30 +453,7 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                         </div>
                       </div>
 
-                      <div className="mt-3 pt-3 border-t flex items-center justify-between bg-slate-50/50 p-2 rounded-md">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-muted-foreground">Progress Rating:</span>
-                          <div className="flex items-center gap-2">
-                            <Select 
-                              value={(task.progressRating ?? 0).toString()} 
-                              onValueChange={(val) => updateTask(task.id, { progressRating: parseInt(val) })}
-                            >
-                              <SelectTrigger className="w-[70px] h-8 bg-white">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {[0,1,2,3,4,5,6,7,8,9,10].map(n => (
-                                  <SelectItem key={n} value={n.toString()}>{n}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <span className="text-sm text-muted-foreground">/ 10</span>
-                          </div>
-                        </div>
-                        <div className="text-xs text-muted-foreground italic">
-                          Rate the quality of progress updates
-                        </div>
-                      </div>
+
                     </Card>
                   ))
                 )}
@@ -564,21 +541,18 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                 </Button>
               </div>
 
-              {evaluations.length === 0 ? (
+              {evaluations.filter(e => e.type !== 'Automated').length === 0 ? (
                 <Card className="p-8 text-center">
                   <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
                   <p className="text-muted-foreground">No evaluations yet</p>
                 </Card>
               ) : (
-                evaluations.map((evaluation) => (
+                evaluations.filter(e => e.type !== 'Automated').map((evaluation) => (
                   <Card key={evaluation.id} className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-semibold">Evaluation Report</h4>
-                          {evaluation.type === 'Automated' && (
-                            <Badge variant="secondary" className="text-xs">Automated</Badge>
-                          )}
                         </div>
                         {evaluation.taskId && typeof evaluation.taskId === 'object' && (
                           <p className="text-sm font-medium text-primary">
@@ -591,7 +565,9 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-primary">{evaluation.score}/{evaluation.type === 'Automated' ? '100' : '5.0'}</div>
+                          <div className="text-2xl font-bold text-primary">
+                            {(evaluation.score / 20).toFixed(1)}/5.0
+                          </div>
                           <p className="text-sm text-muted-foreground">Score</p>
                           {evaluation.rating && (
                             <p className="text-xs font-semibold mt-1">{evaluation.rating}</p>
@@ -610,33 +586,16 @@ export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
                       </div>
                     </div>
 
-                    {evaluation.type === 'Automated' && evaluation.details ? (
-                      <div className="grid grid-cols-3 gap-4 mb-4">
-                        <div className="bg-muted p-3 rounded-lg text-center">
-                          <p className="text-sm text-muted-foreground mb-1">Completion Rate</p>
-                          <p className="text-xl font-bold">{evaluation.details.taskCompletionRate}%</p>
-                        </div>
-                        <div className="bg-muted p-3 rounded-lg text-center">
-                          <p className="text-sm text-muted-foreground mb-1">On-Time Rate</p>
-                          <p className="text-xl font-bold">{evaluation.details.onTimeRate}%</p>
-                        </div>
-                        <div className="bg-muted p-3 rounded-lg text-center">
-                          <p className="text-sm text-muted-foreground mb-1">Communication</p>
-                          <p className="text-xl font-bold">{evaluation.details.communicationScore}%</p>
-                        </div>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Meetings Held</p>
+                        <p className="font-semibold">{evaluation.meetingsHeld || 0}</p>
                       </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Meetings Held</p>
-                          <p className="font-semibold">{evaluation.meetingsHeld || 0}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Training Applied</p>
-                          <p className="font-semibold">{evaluation.trainingApplied || 0}</p>
-                        </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Training Applied</p>
+                        <p className="font-semibold">{evaluation.trainingApplied || 0}</p>
                       </div>
-                    )}
+                    </div>
 
                     {evaluation.feedback && (
                       <div className="pt-4 border-t mt-4">
