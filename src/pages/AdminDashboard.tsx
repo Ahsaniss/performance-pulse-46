@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { LogOut, LayoutDashboard, Users, Search, MessageSquare, Calendar, FileText, Plus, Sparkles, Download } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, Search, MessageSquare, Calendar, FileText, Plus, Download } from "lucide-react";
 import { EmployeeGrid } from "@/components/admin/EmployeeGrid";
 import { EmployeeModal } from "@/components/admin/EmployeeModal";
 import { SendMessageModal } from "@/components/admin/SendMessageModal";
@@ -14,7 +14,6 @@ import { DepartmentStats } from "@/components/admin/DepartmentStats";
 import { AdminOverview } from "@/components/admin/AdminOverview";
 import { AddEmployeeModal } from "@/components/admin/AddEmployeeModal";
 import { AddEvaluationModal } from "@/components/admin/AddEvaluationModal";
-import { GenerateReportModal } from "@/components/admin/GenerateReportModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useTasks } from "@/hooks/useTasks";
@@ -40,11 +39,10 @@ export const AdminDashboard = () => {
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [showAddEvaluationModal, setShowAddEvaluationModal] = useState(false);
-  const [showGenerateReportModal, setShowGenerateReportModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
-  const stats = useAdminStats(tasks, employees);
+  const stats = useAdminStats(tasks, employees, evaluations);
 
   const handleLogout = () => {
     logout();
@@ -184,21 +182,6 @@ export const AdminDashboard = () => {
               </div>
 
               <div 
-                onClick={() => setShowGenerateReportModal(true)}
-                className="bg-card p-6 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-indigo-500/10 text-indigo-600 rounded-lg group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                    <Sparkles className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Generate Report</h3>
-                    <p className="text-sm text-muted-foreground">Automated monthly scoring</p>
-                  </div>
-                </div>
-              </div>
-
-              <div 
                 onClick={handleExportReports}
                 className={`bg-card p-6 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer group ${isExporting ? 'opacity-50 pointer-events-none' : ''}`}
               >
@@ -321,12 +304,6 @@ export const AdminDashboard = () => {
       {showAddEvaluationModal && (
         <AddEvaluationModal
           onClose={() => setShowAddEvaluationModal(false)}
-        />
-      )}
-
-      {showGenerateReportModal && (
-        <GenerateReportModal
-          onClose={() => setShowGenerateReportModal(false)}
         />
       )}
     </div>

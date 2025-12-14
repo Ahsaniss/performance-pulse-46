@@ -31,6 +31,7 @@ export const useTasks = (employeeId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
       toast.success('Task created successfully');
     },
     onError: (error: any) => {
@@ -45,6 +46,7 @@ export const useTasks = (employeeId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
       toast.success('Task updated successfully');
     },
     onError: (error: any) => {
@@ -59,6 +61,7 @@ export const useTasks = (employeeId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
       toast.success('Task deleted successfully');
     },
     onError: (error: any) => {
@@ -75,6 +78,7 @@ export const useTasks = (employeeId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
       toast.success('Progress updated successfully');
     },
     onError: (error: any) => {

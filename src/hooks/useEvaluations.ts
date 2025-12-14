@@ -32,6 +32,7 @@ export const useEvaluations = (employeeId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evaluations'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
       toast.success('Evaluation deleted successfully');
     },
     onError: (error: any) => {
@@ -46,6 +47,7 @@ export const useEvaluations = (employeeId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evaluations'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
       toast.success('Evaluation created successfully');
     },
     onError: (error: any) => {

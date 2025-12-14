@@ -30,6 +30,7 @@ export const useAttendance = (employeeId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
       toast.success('Attendance recorded successfully');
     },
     onError: (error: any) => {
@@ -44,6 +45,7 @@ export const useAttendance = (employeeId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
       toast.success('Attendance updated successfully');
     },
     onError: (error: any) => {

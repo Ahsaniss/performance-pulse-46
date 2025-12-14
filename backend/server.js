@@ -1,6 +1,7 @@
 const dotenv = require('dotenv');
 const http = require('http');
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
 const connectDB = require('./src/config/db');
 const app = require('./app');
 
@@ -36,13 +37,35 @@ const io = new Server(server, {
 // Make io accessible in routes
 app.set('io', io);
 
+// Socket.io JWT Authentication Middleware
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+  
+  if (!token) {
+    return next(new Error('Authentication error: No token provided'));
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.id;
+    socket.userRole = decoded.role;
+    next();
+  } catch (err) {
+    return next(new Error('Authentication error: Invalid token'));
+  }
+});
+
 io.on('connection', (socket) => {
-  console.log('New client connected:', socket.id);
+  console.log('New client connected:', socket.id, 'User:', socket.userId);
 
   socket.on('join_room', (userId) => {
-    if (userId) {
+    // Only allow users to join their own room or admins to join any room
+    if (socket.userId === userId || socket.userRole === 'admin') {
       socket.join(userId);
-      console.log(`User ${userId} joined room`);
+      console.log(`User ${socket.userId} joined room ${userId}`);
+    } else {
+      console.warn(`Unauthorized room join attempt by ${socket.userId} to room ${userId}`);
+      socket.emit('error', { message: 'Cannot join another user\'s room' });
     }
   });
 

@@ -37,7 +37,7 @@ const EmployeeDashboard = () => {
 
   const { attendance, addAttendance, updateAttendance, getTodayAttendance } = useAttendance(targetUserId);
   const { tasks, loading: tasksLoading, updateTask } = useTasks(targetUserId);
-  const { messages, loading: messagesLoading, markAsRead } = useMessages(targetUserId);
+  const { messages, loading: messagesLoading, markAsRead, refetch: refetchMessages } = useMessages(targetUserId);
   const { meetings, loading: meetingsLoading } = useMeetings(targetUserId);
   const { evaluations, loading: evaluationsLoading } = useEvaluations(targetUserId);
   const [selectedTaskForProgress, setSelectedTaskForProgress] = useState<Task | null>(null);
@@ -121,6 +121,7 @@ const EmployeeDashboard = () => {
   const handleMarkMessageRead = async (messageId: string) => {
     try {
       await markAsRead(messageId);
+      refetchMessages(); // Force immediate UI update
     } catch (error) {
       console.error('Error marking message as read:', error);
     }
@@ -455,70 +456,7 @@ const EmployeeDashboard = () => {
           <TabsContent value="performance" className="space-y-6">
             <Card className="p-6">
               <h3 className="text-xl font-bold mb-4">Performance Overview</h3>
-              {evaluations.length > 0 ? (
-                <div className="space-y-6">
-                  <PersonalPerformanceChart userId={targetUserId} />
-                  <div className="mt-6">
-                    <h4 className="font-semibold mb-3">Recent Evaluations</h4>
-                    {evaluations.slice(0, 3).map((evaluation) => (
-                      <Card key={evaluation.id} className="p-4 mb-3">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(evaluation.date).toLocaleDateString()}
-                              </p>
-                              {evaluation.type === 'Automated' && (
-                                <Badge variant="secondary" className="text-xs">Automated</Badge>
-                              )}
-                            </div>
-                            {evaluation.taskId && typeof evaluation.taskId === 'object' && (
-                              <p className="text-sm font-medium text-primary mt-1">
-                                Task: {(evaluation.taskId as any).title}
-                              </p>
-                            )}
-                            {evaluation.type === 'Automated' && evaluation.details ? (
-                              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                                <div className="bg-muted p-2 rounded">
-                                  <span className="block text-muted-foreground">Completion</span>
-                                  <span className="font-bold">{evaluation.details.taskCompletionRate}%</span>
-                                </div>
-                                <div className="bg-muted p-2 rounded">
-                                  <span className="block text-muted-foreground">On-Time</span>
-                                  <span className="font-bold">{evaluation.details.onTimeRate}%</span>
-                                </div>
-                                <div className="bg-muted p-2 rounded">
-                                  <span className="block text-muted-foreground">Communication</span>
-                                  <span className="font-bold">{evaluation.details.communicationScore}%</span>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="mt-1">{evaluation.comments}</p>
-                            )}
-                            {evaluation.feedback && (
-                              <p className="mt-2 text-sm italic text-muted-foreground">{evaluation.feedback}</p>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <Badge className="bg-primary/10 text-primary mb-1">
-                              Score: {evaluation.score}/100
-                            </Badge>
-                            {evaluation.rating && (
-                              <p className="text-xs font-semibold">{evaluation.rating}</p>
-                            )}
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <TrendingUp className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <h4 className="text-lg font-semibold mb-2">No evaluations yet</h4>
-                  <p className="text-muted-foreground">Your performance evaluations will appear here.</p>
-                </div>
-              )}
+              <PersonalPerformanceChart userId={targetUserId} />
             </Card>
 
             <Card className="p-6">

@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Send, Paperclip, FileText, Image as ImageIcon, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Send, Paperclip, FileText, Image as ImageIcon, X, Search, MessageSquare } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -28,13 +29,27 @@ export default function ChatInterface({ defaultSelectedUser, hideSidebar = false
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const socketRef = useRef<Socket | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize socket
   useEffect(() => {
-    socketRef.current = io(SOCKET_URL);
+    // Get token from localStorage (assuming it's stored there)
+    const token = localStorage.getItem('token');
+    
+    socketRef.current = io(SOCKET_URL, {
+      auth: {
+        token: token
+      }
+    });
+    
+    // Handle connection errors
+    socketRef.current.on('connect_error', (err) => {
+      console.error('Socket connection error:', err.message);
+      toast.error('Failed to connect to chat server');
+    });
     
     if (user?.id) {
       socketRef.current.emit('join_room', user.id);
@@ -49,6 +64,11 @@ export default function ChatInterface({ defaultSelectedUser, hideSidebar = false
       };
       setMessages((prev) => [...prev, normalizedMessage]);
       refetch();
+    });
+    
+    // Handle error events from server
+    socketRef.current.on('error', (error) => {
+      toast.error(error.message || 'An error occurred');
     });
 
     return () => {
@@ -81,6 +101,13 @@ export default function ChatInterface({ defaultSelectedUser, hideSidebar = false
       return u.role === 'admin';
     }
   }) || [];
+
+  // Filter users based on search query
+  const filteredChatUsers = chatUsers.filter(u => 
+    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.position?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleSend = async () => {
     if ((!newMessage.trim() && files.length === 0) || !selectedUser) return;
@@ -136,71 +163,140 @@ export default function ChatInterface({ defaultSelectedUser, hideSidebar = false
     <div className="flex h-[600px] gap-4">
       {/* Sidebar */}
       {!hideSidebar && (
-        <Card className="w-1/3 flex flex-col">
-          <CardHeader className="p-4 border-b">
-            <CardTitle>Chats</CardTitle>
+        <Card className="w-80 flex flex-col border-2 shadow-lg">
+          <CardHeader className="p-4 border-b bg-gradient-to-r from-primary/10 to-primary/5">
+            <div className="flex items-center gap-2 mb-3">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Messages</CardTitle>
+              <Badge variant="secondary" className="ml-auto">
+                {filteredChatUsers.length}
+              </Badge>
+            </div>
+            
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search employees..."
+                className="pl-9 h-9 bg-background/50"
+              />
+            </div>
           </CardHeader>
+          
           <ScrollArea className="flex-1">
-            <div className="p-2 space-y-2">
-              {chatUsers.map(u => (
-                <div
-                  key={u.id}
-                  onClick={() => setSelectedUser(u.id)}
-                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-accent transition-colors ${selectedUser === u.id ? 'bg-accent' : ''}`}
-                >
-                  <Avatar>
-                    <AvatarImage src={u.avatar} />
-                    <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 overflow-hidden">
-                    <p className="font-medium truncate">{u.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{u.role}</p>
-                  </div>
+            <div className="p-2 space-y-1">
+              {filteredChatUsers.length > 0 ? (
+                filteredChatUsers.map(u => {
+                  const unreadCount = messages.filter(msg => {
+                    const fromId = typeof msg.from === 'object' ? msg.from._id : msg.from;
+                    return fromId === u.id && msg.to === user?.id && !msg.read;
+                  }).length;
+
+                  return (
+                    <div
+                      key={u.id}
+                      onClick={() => setSelectedUser(u.id)}
+                      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-md ${
+                        selectedUser === u.id 
+                          ? 'bg-primary/15 border-2 border-primary/30 shadow-sm' 
+                          : 'hover:bg-accent/50 border-2 border-transparent'
+                      }`}
+                    >
+                      <div className="relative">
+                        <Avatar className="h-10 w-10 ring-2 ring-background">
+                          <AvatarImage src={u.avatar} />
+                          <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
+                            {u.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-background"></div>
+                      </div>
+                      
+                      <div className="flex-1 overflow-hidden">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold truncate text-sm">{u.name}</p>
+                          {unreadCount > 0 && (
+                            <Badge variant="destructive" className="h-5 min-w-5 rounded-full text-[10px] px-1.5">
+                              {unreadCount > 9 ? '9+' : unreadCount}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-xs text-muted-foreground truncate">{u.position || u.role}</p>
+                          {u.department && (
+                            <>
+                              <span className="text-xs text-muted-foreground">•</span>
+                              <p className="text-xs text-muted-foreground truncate">{u.department}</p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No employees found</p>
                 </div>
-              ))}
+              )}
             </div>
           </ScrollArea>
         </Card>
       )}
 
       {/* Chat Area */}
-      <Card className="flex-1 flex flex-col">
+      <Card className="flex-1 flex flex-col border-2 shadow-lg">
         {selectedUser ? (
           <>
-            <CardHeader className="p-4 border-b flex flex-row items-center gap-3">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={chatUsers.find(u => u.id === selectedUser)?.avatar} />
-                <AvatarFallback>{chatUsers.find(u => u.id === selectedUser)?.name.charAt(0)}</AvatarFallback>
+            <CardHeader className="p-4 border-b bg-gradient-to-r from-primary/10 to-primary/5 flex flex-row items-center gap-3">
+              <Avatar className="h-10 w-10 ring-2 ring-background">
+                <AvatarImage src={filteredChatUsers.find(u => u.id === selectedUser)?.avatar} />
+                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
+                  {filteredChatUsers.find(u => u.id === selectedUser)?.name.charAt(0)}
+                </AvatarFallback>
               </Avatar>
-              <div>
-                <p className="font-medium">{chatUsers.find(u => u.id === selectedUser)?.name}</p>
+              <div className="flex-1">
+                <p className="font-semibold text-base">{filteredChatUsers.find(u => u.id === selectedUser)?.name}</p>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                  <span>Online</span>
+                </div>
               </div>
             </CardHeader>
             
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 p-4 bg-gradient-to-b from-background to-muted/20">
               <div className="space-y-4">
                 {conversationMessages.map((msg, index) => {
                   const fromId = typeof msg.from === 'object' ? msg.from._id : msg.from;
                   const isMe = fromId === user?.id;
                   return (
-                    <div key={msg._id || index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[70%] rounded-lg p-3 ${isMe ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                        {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                    <div key={msg._id || index} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                      <div className={`max-w-[70%] rounded-2xl p-3 shadow-sm ${
+                        isMe 
+                          ? 'bg-primary text-primary-foreground rounded-br-sm' 
+                          : 'bg-card border rounded-bl-sm'
+                      }`}>
+                        {msg.content && <p className="whitespace-pre-wrap text-sm">{msg.content}</p>}
                         
                         {msg.attachments && msg.attachments.length > 0 && (
                           <div className="mt-2 space-y-2">
                             {msg.attachments.map((att: any, i: number) => (
-                              <div key={i} className="flex items-center gap-2 p-2 bg-background/20 rounded text-sm">
+                              <div key={i} className={`flex items-center gap-2 p-2 rounded-lg text-sm ${
+                                isMe ? 'bg-primary-foreground/10' : 'bg-muted'
+                              }`}>
                                 {att.mimetype?.startsWith('image/') ? (
-                                  <ImageIcon className="h-4 w-4" />
+                                  <ImageIcon className="h-4 w-4 flex-shrink-0" />
                                 ) : (
-                                  <FileText className="h-4 w-4" />
+                                  <FileText className="h-4 w-4 flex-shrink-0" />
                                 )}
                                 <a 
                                   href={`${import.meta.env.VITE_API_URL}${att.path}`} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="underline truncate max-w-[150px] text-inherit"
+                                  className="underline truncate max-w-[150px]"
                                 >
                                   {att.originalName || att.filename}
                                 </a>
@@ -220,13 +316,14 @@ export default function ChatInterface({ defaultSelectedUser, hideSidebar = false
               </div>
             </ScrollArea>
 
-            <div className="p-4 border-t">
+            <div className="p-4 border-t bg-background">
               {files.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2">
+                <div className="flex flex-wrap gap-2 mb-3">
                   {files.map((file, i) => (
-                    <div key={i} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-full text-xs">
+                    <div key={i} className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-full text-xs border">
+                      <FileText className="h-3 w-3" />
                       <span className="truncate max-w-[100px]">{file.name}</span>
-                      <button onClick={() => removeFile(i)} className="hover:text-destructive">
+                      <button onClick={() => removeFile(i)} className="hover:text-destructive transition-colors">
                         <X className="h-3 w-3" />
                       </button>
                     </div>
@@ -238,6 +335,7 @@ export default function ChatInterface({ defaultSelectedUser, hideSidebar = false
                   variant="outline" 
                   size="icon" 
                   onClick={() => fileInputRef.current?.click()}
+                  className="hover:bg-primary/10 hover:text-primary transition-colors"
                 >
                   <Paperclip className="h-4 w-4" />
                 </Button>
@@ -254,16 +352,22 @@ export default function ChatInterface({ defaultSelectedUser, hideSidebar = false
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                  className="border-2 focus-visible:ring-2 focus-visible:ring-primary/20"
                 />
-                <Button onClick={handleSend}>
+                <Button 
+                  onClick={handleSend}
+                  className="px-6 shadow-md hover:shadow-lg transition-all"
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            Select a user to start chatting
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-gradient-to-b from-background to-muted/20">
+            <MessageSquare className="h-16 w-16 mb-4 opacity-50" />
+            <p className="text-lg font-medium">Select a conversation</p>
+            <p className="text-sm mt-1">Choose an employee to start messaging</p>
           </div>
         )}
       </Card>

@@ -48,11 +48,46 @@ exports.createTask = async (req, res) => {
 // @access  Private
 exports.updateTask = async (req, res) => {
   try {
-    const task = await taskService.updateTask(req.params.id, req.body);
-
-    if (!task) {
+    // First get the task to check ownership
+    const existingTask = await taskService.getTaskById(req.params.id);
+    
+    if (!existingTask) {
       return res.status(404).json({ success: false, message: 'Task not found' });
     }
+
+    // Authorization: Only admin or assigned user can update
+    const isAdmin = req.user.role === 'admin';
+    const isAssignedUser = existingTask.assignedTo.toString() === req.user.id;
+    
+    if (!isAdmin && !isAssignedUser) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Not authorized to update this task' 
+      });
+    }
+
+    // Whitelist allowed fields
+    const allowedFields = ['title', 'description', 'status', 'priority', 'deadline', 'difficulty'];
+    const updates = {};
+    
+    // Only allow certain fields for non-admin users
+    if (!isAdmin) {
+      const userAllowedFields = ['status']; // Regular users can only update status
+      Object.keys(req.body).forEach(key => {
+        if (userAllowedFields.includes(key)) {
+          updates[key] = req.body[key];
+        }
+      });
+    } else {
+      // Admin can update all allowed fields
+      Object.keys(req.body).forEach(key => {
+        if (allowedFields.includes(key)) {
+          updates[key] = req.body[key];
+        }
+      });
+    }
+
+    const task = await taskService.updateTask(req.params.id, updates);
 
     res.json({ success: true, data: task });
   } catch (error) {
@@ -65,6 +100,24 @@ exports.updateTask = async (req, res) => {
 // @access  Private
 exports.updateTaskProgress = async (req, res) => {
   try {
+    // Get task to verify ownership
+    const existingTask = await taskService.getTaskById(req.params.id);
+    
+    if (!existingTask) {
+      return res.status(404).json({ success: false, message: 'Task not found' });
+    }
+
+    // Authorization: Only assigned user or admin can update progress
+    const isAdmin = req.user.role === 'admin';
+    const isAssignedUser = existingTask.assignedTo.toString() === req.user.id;
+    
+    if (!isAdmin && !isAssignedUser) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Not authorized to update progress for this task' 
+      });
+    }
+
     const { percentage, comment, strategy, blockers } = req.body;
     const files = req.files || [];
 

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import {
   PieChart, Pie, Cell, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  LineChart, Line, AreaChart, Area, ScatterChart, Scatter, ZAxis, ComposedChart
+  LineChart, Line, AreaChart, Area, ScatterChart, Scatter, ZAxis, ComposedChart,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -236,6 +237,90 @@ export const EmployeeMISDashboard: React.FC<EmployeeMISDashboardProps> = ({ anal
     if (item.completedCount > 0) item.avgDays = Number((item.totalDays / item.completedCount).toFixed(1));
   });
 
+  // NEW: Performance Score Trend (Last 6 months)
+  const getPerformanceScoreTrend = () => {
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = subMonths(new Date(), i);
+      const monthKey = format(date, 'MMM yyyy');
+      
+      const monthTasks = taskHistory.filter(t => {
+        if (!t.createdAt) return false;
+        const created = parseISO(t.createdAt);
+        return format(created, 'MMM yyyy') === monthKey;
+      });
+      
+      const completed = monthTasks.filter(t => t.status === 'completed').length;
+      const onTime = monthTasks.filter(t => t.status === 'completed' && t.completedAt && t.deadline && parseISO(t.completedAt) <= parseISO(t.deadline)).length;
+      const withUpdates = monthTasks.filter(t => (t.progressUpdates || []).length > 0).length;
+      
+      const completionRate = monthTasks.length > 0 ? (completed / monthTasks.length) * 30 : 0;
+      const onTimeRate = monthTasks.length > 0 ? (onTime / monthTasks.length) * 30 : 0;
+      const communicationScore = monthTasks.length > 0 ? (withUpdates / monthTasks.length) * 30 : 0;
+      const score = Math.round(completionRate + onTimeRate + communicationScore);
+      
+      months.push({ name: format(date, 'MMM'), score: Math.min(100, score), target: 85 });
+    }
+    return months;
+  };
+  const performanceScoreTrend = getPerformanceScoreTrend();
+
+  // NEW: Difficulty vs Success Rate
+  const getDifficultySuccessData = () => {
+    return [
+      {
+        difficulty: 'Easy',
+        success: taskHistory.filter(t => t.difficulty === 'low' || t.difficulty === 'easy').filter(t => t.status === 'completed').length,
+        total: taskHistory.filter(t => t.difficulty === 'low' || t.difficulty === 'easy').length
+      },
+      {
+        difficulty: 'Medium',
+        success: taskHistory.filter(t => t.difficulty === 'medium').filter(t => t.status === 'completed').length,
+        total: taskHistory.filter(t => t.difficulty === 'medium').length
+      },
+      {
+        difficulty: 'Hard',
+        success: taskHistory.filter(t => t.difficulty === 'high' || t.difficulty === 'hard').filter(t => t.status === 'completed').length,
+        total: taskHistory.filter(t => t.difficulty === 'high' || t.difficulty === 'hard').length
+      }
+    ].map(d => ({
+      ...d,
+      successRate: d.total > 0 ? Math.round((d.success / d.total) * 100) : 0
+    }));
+  };
+  const difficultySuccessData = getDifficultySuccessData();
+
+  // NEW: Radar chart data (Performance Dimensions)
+  const getPerformanceRadarData = () => {
+    const completedTasks = taskHistory.filter(t => t.status === 'completed').length;
+    const completionRate = taskHistory.length > 0 ? (completedTasks / taskHistory.length) * 100 : 0;
+    
+    const onTimeTasks = taskHistory.filter(t => t.status === 'completed' && t.completedAt && t.deadline && parseISO(t.completedAt) <= parseISO(t.deadline)).length;
+    const onTimeRate = completedTasks > 0 ? (onTimeTasks / completedTasks) * 100 : 0;
+    
+    const tasksWithUpdates = taskHistory.filter(t => (t.progressUpdates || []).length > 0).length;
+    const communicationScore = taskHistory.length > 0 ? (tasksWithUpdates / taskHistory.length) * 100 : 0;
+    
+    const velocity = Math.min(100, (taskHistory.length / 30) * 100);
+    
+    return [
+      { metric: 'Completion', value: Math.round(completionRate), target: 90 },
+      { metric: 'On-Time', value: Math.round(onTimeRate), target: 90 },
+      { metric: 'Communication', value: Math.round(communicationScore), target: 85 },
+      { metric: 'Velocity', value: Math.round(velocity), target: 80 }
+    ];
+  };
+  const performanceRadarData = getPerformanceRadarData();
+
+  // NEW: Calculate Overall Score and Health Status
+  const getOverallScore = () => {
+    const scores = performanceScoreTrend;
+    return scores.length > 0 ? scores[scores.length - 1].score : 0;
+  };
+  const overallScore = getOverallScore();
+  const scoreHealth = overallScore >= 85 ? 'Excellent' : overallScore >= 70 ? 'Good' : 'Needs Improvement';
+  const scoreColor = overallScore >= 85 ? '#22c55e' : overallScore >= 70 ? '#eab308' : '#ef4444';
+
   // Filtered Tasks for Evidence Table
   const filteredTasks = filterStatus
     ? taskHistory.filter(t => {
@@ -249,6 +334,54 @@ export const EmployeeMISDashboard: React.FC<EmployeeMISDashboardProps> = ({ anal
 
   return (
     <div className="space-y-6">
+      {/* NEW: KPI Cards Section */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="border-l-4" style={{ borderLeftColor: scoreColor }}>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm text-muted-foreground">Overall Performance</p>
+                <p className="text-3xl font-bold" style={{ color: scoreColor }}>{overallScore}/100</p>
+                <p className="text-xs mt-1 font-semibold" style={{ color: scoreColor }}>{scoreHealth}</p>
+              </div>
+              <div className="text-4xl opacity-20">📊</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">Deadline Compliance</p>
+            <p className="text-3xl font-bold">
+              {taskHistory.length > 0 
+                ? Math.round((taskHistory.filter(t => t.status === 'completed' && t.completedAt && t.deadline && parseISO(t.completedAt) <= parseISO(t.deadline)).length / Math.max(1, taskHistory.filter(t => t.status === 'completed').length)) * 100) 
+                : 0}%
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Target: 90%</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-purple-500">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">Tasks Completed</p>
+            <p className="text-3xl font-bold">{taskHistory.filter(t => t.status === 'completed').length}</p>
+            <p className="text-xs text-muted-foreground mt-1">of {taskHistory.length} total</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-orange-500">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">Avg. Completion Time</p>
+            <p className="text-3xl font-bold">
+              {burnoutData.length > 0 
+                ? Math.round(burnoutData.reduce((sum, b) => sum + (typeof b.avgDays === 'number' ? b.avgDays : 0), 0) / burnoutData.length)
+                : 0}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">days</p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* AI Insight Section */}
       <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-100">
         <CardHeader>
@@ -290,7 +423,101 @@ export const EmployeeMISDashboard: React.FC<EmployeeMISDashboardProps> = ({ anal
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* 1. Completion Rate */}
+        {/* NEW: Performance Score Trend */}
+        <Card className="col-span-1 lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Performance Score Trend</CardTitle>
+            <CardDescription>6-month trajectory vs. target (85/100)</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={performanceScoreTrend}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis domain={[0, 100]} />
+                <Tooltip />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="score" 
+                  stroke="#3b82f6" 
+                  strokeWidth={3}
+                  name="Your Score"
+                  dot={{ fill: '#3b82f6', r: 5 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="target" 
+                  stroke="#ef4444" 
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  name="Target"
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* NEW: Performance Radar */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Performance Dimensions</CardTitle>
+            <CardDescription>vs. Target benchmarks</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart data={performanceRadarData}>
+                <PolarGrid />
+                <PolarAngleAxis dataKey="metric" />
+                <PolarRadiusAxis angle={90} domain={[0, 100]} />
+                <Radar 
+                  name="Actual" 
+                  dataKey="value" 
+                  stroke="#3b82f6" 
+                  fill="#3b82f6" 
+                  fillOpacity={0.6} 
+                />
+                <Radar 
+                  name="Target" 
+                  dataKey="target" 
+                  stroke="#ef4444" 
+                  fill="none" 
+                  strokeDasharray="5 5"
+                />
+                <Legend />
+                <Tooltip />
+              </RadarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* NEW: Success Rate by Difficulty */}
+        <Card className="col-span-1 lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Success Rate by Difficulty</CardTitle>
+            <CardDescription>Can the employee handle Hard tasks?</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={difficultySuccessData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="difficulty" />
+                <YAxis domain={[0, 100]} />
+                <Tooltip formatter={(value) => `${value}%`} />
+                <Legend />
+                <Bar 
+                  dataKey="successRate" 
+                  fill="#8884d8" 
+                  name="Success Rate (%)"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* EXISTING: Deadline Compliance */}
         <Card>
           <CardHeader>
             <CardTitle>Task Completion Status</CardTitle>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,16 +33,17 @@ interface EmployeeModalProps {
 }
 
 export const EmployeeModal = ({ employeeId, onClose }: EmployeeModalProps) => {
+  const queryClient = useQueryClient();
   const { employees, deleteEmployee, updateEmployee } = useEmployees();
   const { tasks, deleteTask, updateTask } = useTasks(employeeId);
   const { evaluations, deleteEvaluation } = useEvaluations(employeeId);
   const { attendance } = useAttendance(employeeId);
   const { analytics, loading: analyticsLoading, refetch: refetchAnalytics } = useAnalytics(employeeId);
   
-  // Refetch analytics when tasks change to ensure graphs are real-time
+  // Invalidate analytics cache when tasks, evaluations, or attendance change to ensure graphs are real-time
   useEffect(() => {
-    refetchAnalytics();
-  }, [tasks]);
+    queryClient.invalidateQueries({ queryKey: ['analytics', employeeId] });
+  }, [tasks, evaluations, attendance, employeeId, queryClient]);
 
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [showAddEvaluationModal, setShowAddEvaluationModal] = useState(false);
