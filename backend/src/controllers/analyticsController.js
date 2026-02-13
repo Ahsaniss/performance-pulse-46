@@ -145,18 +145,27 @@ exports.getAIInsight = async (req, res) => {
     const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
     const prompt = `
-      Act as an HR Performance Analyst. Analyze the following performance data for employee "${employeeName}":
-      - Completion Rate: ${metrics.completionRate}%
-      - On-Time Delivery: ${metrics.timelinessScore}%
-      - Average Turnaround Time: ${metrics.avgTurnaroundTime} days
-      - Overdue Tasks: ${metrics.overdue}
-      - Total Tasks: ${metrics.total}
+You are an HR Performance Analyst. Using ONLY the provided metrics, write a detailed performance brief for employee "${employeeName}".
 
-      Provide a concise 2-sentence summary. 
-      First sentence: Identify a key strength or weakness.
-      Second sentence: Provide a specific, actionable recommendation for the manager.
-      Tone: Professional and constructive.
-    `;
+Data (do not invent):
+- Completion Rate: ${metrics.completionRate}%
+- On-Time Delivery: ${metrics.timelinessScore}%
+- Average Turnaround Time: ${metrics.avgTurnaroundTime} days
+- Overdue Tasks: ${metrics.overdue}
+- Total Tasks: ${metrics.total}
+
+Output structure (4–6 sentences, ~120–180 words):
+1) Opening snapshot: overall performance and trajectory (strengths + weaknesses based on the numbers).
+2) Delivery quality: on-time vs overdue implications; call out risk areas.
+3) Velocity/throughput: what turnaround time suggests; any pacing concerns.
+4) Recommendations: 2–3 specific, manager-ready actions (e.g., rebalance workload, add support, set targets, coaching focus).
+5) Optional coaching note for the employee (concise, constructive).
+
+Constraints:
+- Be professional, evidence-based, and actionable.
+- If any metric is missing, state that briefly and adjust recommendations accordingly.
+- No assumptions beyond the data; do not fabricate metrics.
+`;
 
     const response = await genAI.models.generateContent({
       model: "gemini-2.0-flash",
