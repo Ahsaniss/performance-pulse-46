@@ -2,6 +2,40 @@ const Task = require('../models/Task');
 const User = require('../models/User');
 const { GoogleGenAI } = require("@google/genai");
 
+// Small helpers
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Retry wrapper to smooth over transient 503/high-demand or quota blips
+const generateWithRetry = async (genAI, options, { retries = 2, backoffMs = 800 } = {}) => {
+  let attempt = 0;
+  let delay = backoffMs;
+
+  // Trim empty contents upfront to avoid API errors
+  if (!options?.contents || options.contents.length === 0) {
+    throw new Error('Missing contents for generateContent');
+  }
+
+  while (true) {
+    try {
+      return await genAI.models.generateContent(options);
+    } catch (err) {
+      const status = err?.response?.status || err?.status || err?.code;
+      const apiStatus = err?.response?.data?.error?.status;
+      const isUnavailable = status === 503 || apiStatus === 'UNAVAILABLE';
+      const isResourceExhausted = apiStatus === 'RESOURCE_EXHAUSTED';
+
+      if (attempt < retries && (isUnavailable || isResourceExhausted)) {
+        await wait(delay);
+        attempt += 1;
+        delay *= 2;
+        continue;
+      }
+
+      throw err;
+    }
+  }
+};
+
 // Helper to calculate metrics
 const calculateMetrics = (tasks) => {
   const total = tasks.length;
@@ -145,36 +179,54 @@ exports.getAIInsight = async (req, res) => {
     const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
     const prompt = `
-You are an HR Performance Analyst. Using ONLY the provided metrics, write a detailed performance brief for employee "${employeeName}".
+  You are an HR Performance Analyst writing a brief for the ADMIN/MANAGER about employee performance (not directly to the employee). Keep it professional, clear, and actionable for leadership decisions.
 
-Data (do not invent):
-- Completion Rate: ${metrics.completionRate}%
-- On-Time Delivery: ${metrics.timelinessScore}%
-- Average Turnaround Time: ${metrics.avgTurnaroundTime} days
-- Overdue Tasks: ${metrics.overdue}
-- Total Tasks: ${metrics.total}
+  <employee_data>
+  Employee: ${employeeName}
+  Completion Rate: ${metrics.completionRate}%
+  On-Time Delivery: ${metrics.timelinessScore}%
+  Average Turnaround Time: ${metrics.avgTurnaroundTime} days
+  Overdue Tasks: ${metrics.overdue}
+  Total Tasks: ${metrics.total}
+  </employee_data>
 
-Output structure (4–6 sentences, ~120–180 words):
-1) Opening snapshot: overall performance and trajectory (strengths + weaknesses based on the numbers).
-2) Delivery quality: on-time vs overdue implications; call out risk areas.
-3) Velocity/throughput: what turnaround time suggests; any pacing concerns.
-4) Recommendations: 2–3 specific, manager-ready actions (e.g., rebalance workload, add support, set targets, coaching focus).
-5) Optional coaching note for the employee (concise, constructive).
+  <task>
+  Produce three sections tailored to the manager:
 
-Constraints:
-- Be professional, evidence-based, and actionable.
-- If any metric is missing, state that briefly and adjust recommendations accordingly.
-- No assumptions beyond the data; do not fabricate metrics.
-`;
+  **Section 1: Current State (2-3 sentences)**
+  - Summarize performance with the numbers above (call out strengths + issues).
+  - Note any risk signals (overdue load, low completion, etc.).
 
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash",
+  **Section 2: Impact/Risks (2-3 sentences)**
+  - Explain how the current pattern affects team delivery, dependencies, or quality.
+  - Highlight any urgency (e.g., overdue items blocking others).
+
+  **Section 3: Recommended Manager Actions (3-5 bullets)**
+  - Give concrete steps the manager can take this week (e.g., re-prioritize queue, assign support, set daily check-ins, unblock dependencies, adjust scope).
+  - Include one fast “first action” the manager can do today.
+  - Keep tips realistic and time-bound.
+
+  Guidelines:
+  - Audience is the manager; keep it concise, direct, and actionable.
+  - Use only the provided data; do not invent numbers.
+  - Avoid jargon; be specific about actions.
+  </task>
+
+  Write all three sections now for the manager. Be specific and actionable.
+  `;
+
+    const response = await generateWithRetry(genAI, {
+      model: "gemini-3-flash-preview",
       contents: [{ role: "user", parts: [{ text: prompt }] }]
     });
 
     res.json({ success: true, data: response.text });
   } catch (error) {
     console.error('AI Error:', error);
+    const status = error?.response?.status || error?.status;
+    if (status === 503) {
+      return res.status(503).json({ success: false, message: 'AI service is busy. Please retry in a few seconds.' });
+    }
     res.status(500).json({ 
       success: false, 
       message: 'Failed to generate AI insight',
@@ -238,14 +290,18 @@ exports.chatWithAI = async (req, res) => {
       parts: [{ text: message }]
     });
 
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash",
+    const response = await generateWithRetry(genAI, {
+      model: "gemini-3-flash-preview",
       contents: contents
     });
 
     res.json({ success: true, data: response.text });
   } catch (error) {
     console.error('AI Chat Error:', error);
+    const status = error?.response?.status || error?.status;
+    if (status === 503) {
+      return res.status(503).json({ success: false, message: 'AI service is busy. Please retry in a few seconds.' });
+    }
     res.status(500).json({ success: false, message: 'Chat failed', error: error.message });
   }
 };
