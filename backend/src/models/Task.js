@@ -49,6 +49,15 @@ const taskSchema = new mongoose.Schema({
     comment: { type: String },
     strategy: { type: String },
     blockers: { type: String },
+    tags: [{ type: String, enum: ['Frontend', 'Backend', 'Design', 'Testing', 'DevOps', 'Documentation', 'Research', 'Bug Fix'] }],
+    kpiMetrics: [{
+      label: { type: String },
+      value: { type: Number },
+      unit: { type: String },
+      target: { type: Number }
+    }],
+    aiSuggestion: { type: String },
+    estimatedCompletion: { type: String },
     attachments: [{
       filename: String,
       originalName: String,

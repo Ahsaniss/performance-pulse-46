@@ -118,15 +118,29 @@ exports.updateTaskProgress = async (req, res) => {
       });
     }
 
-    const { percentage, comment, strategy, blockers } = req.body;
+    const { percentage, comment, strategy, blockers, tags, kpiMetrics, aiSuggestion, estimatedCompletion } = req.body;
     const files = req.files || [];
+
+    // Parse JSON fields that may come as strings from FormData
+    let parsedTags = [];
+    let parsedKpiMetrics = [];
+    try {
+      parsedTags = typeof tags === 'string' ? JSON.parse(tags) : (tags || []);
+    } catch (e) { parsedTags = []; }
+    try {
+      parsedKpiMetrics = typeof kpiMetrics === 'string' ? JSON.parse(kpiMetrics) : (kpiMetrics || []);
+    } catch (e) { parsedKpiMetrics = []; }
 
     const task = await taskService.updateTaskProgress(req.params.id, {
       percentage,
       comment,
       strategy,
       blockers,
-      files
+      files,
+      tags: parsedTags,
+      kpiMetrics: parsedKpiMetrics,
+      aiSuggestion: aiSuggestion || '',
+      estimatedCompletion: estimatedCompletion || ''
     });
 
     res.json({ success: true, data: task });

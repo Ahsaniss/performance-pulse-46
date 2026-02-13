@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, TrendingUp, Calendar, LogOut, User, AlertCircle, MessageSquare } from "lucide-react";
+import { CheckCircle2, Clock, TrendingUp, Calendar, LogOut, User, AlertCircle, MessageSquare, Tag, BarChart3 } from "lucide-react";
 import { NotificationBell } from "@/components/employee/NotificationBell";
 import { PersonalPerformanceChart } from "@/components/employee/PersonalPerformanceChart";
 import { useAuth } from "@/contexts/AuthContext";
@@ -376,6 +376,29 @@ const EmployeeDashboard = () => {
                               <div className="mb-2">
                                 <span className="text-xs font-semibold text-red-600 uppercase">Blockers:</span>
                                 <p className="text-sm text-muted-foreground">{update.blockers}</p>
+                              </div>
+                            )}
+                            {update.tags && update.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mb-2">
+                                {update.tags.map((tag: string, ti: number) => (
+                                  <Badge key={ti} variant="outline" className="text-[10px] px-1.5 py-0">
+                                    <Tag className="w-2.5 h-2.5 mr-1" />{tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                            {update.kpiMetrics && update.kpiMetrics.length > 0 && (
+                              <div className="mb-2 space-y-1">
+                                {update.kpiMetrics.map((kpi: any, ki: number) => (
+                                  <div key={ki} className="flex items-center gap-2 text-xs">
+                                    <BarChart3 className="w-3 h-3 text-emerald-500" />
+                                    <span className="font-medium">{kpi.label}:</span>
+                                    <span>{kpi.value}{kpi.unit ? ` ${kpi.unit}` : ''}</span>
+                                    {kpi.target > 0 && (
+                                      <span className="text-muted-foreground">/ {kpi.target} target ({Math.round((kpi.value / kpi.target) * 100)}%)</span>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
                             )}
                             {update.attachments && update.attachments.length > 0 && (

@@ -41,12 +41,25 @@ export interface Attachment {
   mimetype: string;
 }
 
+export type UpdateTag = 'Frontend' | 'Backend' | 'Design' | 'Testing' | 'DevOps' | 'Documentation' | 'Research' | 'Bug Fix';
+
+export interface KPIMetric {
+  label: string;
+  value: number;
+  unit: string;
+  target?: number;
+}
+
 export interface ProgressUpdate {
   percentage: number;
   comment: string;
   strategy?: string;
   blockers?: string;
   attachments?: Attachment[];
+  tags?: UpdateTag[];
+  kpiMetrics?: KPIMetric[];
+  aiSuggestion?: string;
+  estimatedCompletion?: string;
   timestamp?: string;
   updatedAt?: string;
 }

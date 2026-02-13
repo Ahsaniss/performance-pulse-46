@@ -38,7 +38,7 @@ class TaskService {
     );
   }
 
-  async updateTaskProgress(id, { percentage, comment, strategy, blockers, files }) {
+  async updateTaskProgress(id, { percentage, comment, strategy, blockers, files, tags, kpiMetrics, aiSuggestion, estimatedCompletion }) {
     const attachments = files.map(file => ({
       filename: file.filename,
       originalName: file.originalname,
@@ -52,6 +52,10 @@ class TaskService {
       strategy,
       blockers,
       attachments,
+      tags: tags || [],
+      kpiMetrics: kpiMetrics || [],
+      aiSuggestion: aiSuggestion || '',
+      estimatedCompletion: estimatedCompletion || '',
       updatedAt: new Date()
     };
 
