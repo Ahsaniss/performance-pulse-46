@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 export const useEvaluations = (employeeId?: string) => {
   const queryClient = useQueryClient();
 
-  const { data: evaluations = [], isLoading: loading, refetch } = useQuery({
+  const { data: evaluations = [], isLoading: loading, error, refetch } = useQuery({
     queryKey: ['evaluations', employeeId],
     queryFn: async () => {
       const params = employeeId ? { employeeId } : {};
@@ -58,8 +58,10 @@ export const useEvaluations = (employeeId?: string) => {
   return {
     evaluations,
     loading,
+    error: error?.message || null,
     createEvaluation: (data: Partial<Evaluation>) => createEvaluationMutation.mutateAsync(data),
     deleteEvaluation: (id: string) => deleteEvaluationMutation.mutateAsync(id),
     refetch,
+    fetchEvaluations: refetch,
   };
 };

@@ -1,13 +1,16 @@
 const Task = require('../models/Task');
 const Evaluation = require('../models/Evaluation');
 
+/**
+ * Generate Automated Performance Evaluation
+ * Formula: (Task Completion Rate * 0.40) + (On-Time Delivery * 0.40) + (Communication Score * 0.20)
+ */
 exports.generateAutomatedEvaluation = async (userId, month, year) => {
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0);
   endDate.setHours(23, 59, 59, 999);
 
-  // 1. Fetch Tasks active in this period
-  // We consider tasks created in this month or completed in this month
+  // Fetch all tasks assigned to this employee during the month
   const tasks = await Task.find({
     assignedTo: userId,
     $or: [
@@ -18,16 +21,14 @@ exports.generateAutomatedEvaluation = async (userId, month, year) => {
 
   const totalTasks = tasks.length;
 
-  // --- A. Task Completion Score (40%) ---
-  // Tasks that are completed (regardless of when they were created, if they were active/completed in this window)
-  // Or strictly tasks assigned in this window? The prompt says "percentage of assigned tasks completed within the month".
-  // Let's stick to tasks found by the query above.
+  // --- A. Task Completion Rate (40%) ---
+  // Percentage of assigned tasks completed within the month
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
   const completionRate = totalTasks === 0 ? 0 : (completedTasks / totalTasks) * 100;
 
-  // --- B. On-Time Delivery Score (40%) ---
-  // Measure deadlines met without delay.
-  // Formula: (Tasks Delivered On Time / Total Completed Tasks) * 100.
+  // --- B. On-Time Delivery (40%) ---
+  // Tasks delivered on time without delay
+  // Formula: (Tasks Delivered On Time / Total Completed Tasks) * 100
   const onTimeTasks = tasks.filter(t => {
     if (t.status !== 'completed' || !t.completedAt || !t.deadline) return false;
     return new Date(t.completedAt) <= new Date(t.deadline);
@@ -35,35 +36,21 @@ exports.generateAutomatedEvaluation = async (userId, month, year) => {
   
   const onTimeRate = completedTasks === 0 ? 0 : (onTimeTasks / completedTasks) * 100;
 
-  // --- C. Communication Score (30%) ---
-  // Calculate based on how consistently the employee uses the 'Report Progress' feature.
-  // Logic: A task is "Communicated" if the employee added at least 1 update (comment or file)
+  // --- C. Communication Score (20%) ---
+  // Calculate based on consistent use of 'Report Progress' feature
+  // Reward employees who submit daily/regular progress updates, upload evidence, maintain audit trail
   const tasksWithUpdates = tasks.filter(t => {
     return t.progressUpdates && t.progressUpdates.length > 0;
   }).length;
 
   const communicationScore = totalTasks === 0 ? 0 : (tasksWithUpdates / totalTasks) * 100;
 
-  // --- D. Admin Rating Score (10%) ---
-  // Based on Manual Evaluations linked to Completed Tasks
-  // We fetch evaluations where the taskId matches one of the completed tasks in this period
-  const completedTaskIds = tasks.filter(t => t.status === 'completed').map(t => t._id);
-  
-  const evaluations = await Evaluation.find({
-    taskId: { $in: completedTaskIds },
-    employeeId: userId
-  });
-
-  const totalEvaluationScore = evaluations.reduce((sum, ev) => sum + (ev.score || 0), 0);
-  
-  // Calculate average score (0-100)
-  // We divide by completedTasks to ensure the score reflects the coverage of evaluations
-  // If a task is completed but not evaluated, it counts as 0, encouraging admins to evaluate all completed tasks.
-  const adminRatingScore = completedTasks === 0 ? 0 : (totalEvaluationScore / completedTasks);
-
   // --- FINAL WEIGHTED SCORE ---
-  // (Task Completion Rate * 0.30) + (On-Time Delivery * 0.30) + (Communication Score * 0.30) + (Admin Rating Score * 0.10)
-  const finalScore = (completionRate * 0.3) + (onTimeRate * 0.3) + (communicationScore * 0.3) + (adminRatingScore * 0.1);
+  // (Task Completion Rate * 0.40) + (On-Time Delivery * 0.40) + (Communication Score * 0.20)
+  const weightedCompletionScore = completionRate * 0.40;
+  const weightedOnTimeScore = onTimeRate * 0.40;
+  const weightedCommunicationScore = communicationScore * 0.20;
+  const finalScore = weightedCompletionScore + weightedOnTimeScore + weightedCommunicationScore;
 
   // Determine Rating Label
   let ratingLabel = 'Needs Improvement';
@@ -71,25 +58,31 @@ exports.generateAutomatedEvaluation = async (userId, month, year) => {
   else if (finalScore >= 75) ratingLabel = 'Good';
   else if (finalScore >= 60) ratingLabel = 'Average';
 
-  // Save to DB
-  // We need an 'evaluatedBy' field. Since this is automated, we might need a system user or just use the user themselves or null if schema allows.
-  // The schema says 'evaluatedBy' is required. We should probably use the admin who triggered it, or make it optional.
-  // For now, I will assume the controller passes the admin ID who triggered the generation.
-  
+  // Return evaluation data
   return {
     score: Math.round(finalScore),
     rating: ratingLabel,
     details: {
-      taskCompletionRate: Math.round(completionRate),
-      onTimeRate: Math.round(onTimeRate),
-      communicationScore: Math.round(communicationScore),
-      adminRatingScore: Math.round(adminRatingScore),
+      // Raw percentages
+      taskCompletionRate: Math.round(completionRate * 10) / 10,
+      onTimeRate: Math.round(onTimeRate * 10) / 10,
+      communicationScore: Math.round(communicationScore * 10) / 10,
+      
+      // Weighted contributions
+      weightedCompletionScore: Math.round(weightedCompletionScore * 10) / 10,
+      weightedOnTimeScore: Math.round(weightedOnTimeScore * 10) / 10,
+      weightedCommunicationScore: Math.round(weightedCommunicationScore * 10) / 10,
+      
+      // Raw values
+      taskCompletionRawValue: completedTasks,
+      onTimeRawValue: onTimeTasks,
+      communicationRawValue: tasksWithUpdates,
       totalTasks,
       completedTasks,
-      tasksWithUpdates,
-      averageAdminRating: totalTasks > 0 ? (adminRatingScore / 20).toFixed(1) : 0
+      onTimeTasks,
+      tasksWithUpdates
     },
-    feedback: `System Generated: ${ratingLabel}. Updates: ${tasksWithUpdates}/${totalTasks}. Avg Rating: ${(adminRatingScore / 20).toFixed(1)}/5.`,
+    comments: `Automated evaluation for ${month}/${year}. Completion: ${Math.round(completionRate)}%, On-Time: ${Math.round(onTimeRate)}%, Communication: ${Math.round(communicationScore)}%. Final Score: ${Math.round(finalScore)}/100 - ${ratingLabel}.`,
     type: 'Automated',
     month,
     year

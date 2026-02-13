@@ -6,12 +6,16 @@ const {
   createEvaluation,
   updateEvaluation,
   deleteEvaluation,
-  generateMonthlyEvaluations
+  generateMonthlyEvaluations,
+  overrideEvaluation
 } = require('../controllers/evaluationController');
 const { protect, admin } = require('../middleware/auth');
 
 router.route('/generate-automated')
   .post(protect, admin, generateMonthlyEvaluations);
+
+router.route('/:id/override')
+  .put(protect, admin, overrideEvaluation);
 
 router.route('/')
   .get(protect, getEvaluations)

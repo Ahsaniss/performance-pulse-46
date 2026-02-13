@@ -1,5 +1,6 @@
 const Evaluation = require('../models/Evaluation');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 const automatedEvaluationService = require('../services/automatedEvaluationService');
 
 // Helper to update employee performance score
@@ -122,6 +123,7 @@ exports.generateMonthlyEvaluations = async (req, res) => {
     const employees = await User.find({ role: 'employee' });
     
     const results = [];
+    const notificationPromises = [];
 
     // Run generation for each employee
     for (const emp of employees) {
@@ -145,8 +147,34 @@ exports.generateMonthlyEvaluations = async (req, res) => {
       // Update user performance score
       await updateEmployeePerformance(emp._id);
 
+      // Create notification for the employee
+      notificationPromises.push(
+        Notification.create({
+          recipient: emp._id,
+          title: 'New Performance Score Generated',
+          message: `Your automated performance score for ${month}/${year} has been calculated: ${evaluation.score}/100 (${evaluation.rating}). Task Completion: ${evalData.details.taskCompletionRate}%, On-Time: ${evalData.details.onTimeRate}%, Communication: ${evalData.details.communicationScore}%`,
+          type: 'evaluation',
+          relatedId: evaluation._id
+        })
+      );
+
       results.push(evaluation);
     }
+
+    // Send all notifications
+    await Promise.all(notificationPromises);
+
+    // Notify admin managers (optional: notify users with role 'admin')
+    const admins = await User.find({ role: 'admin' });
+    const adminNotificationPromises = admins.map(admin => 
+      Notification.create({
+        recipient: admin._id,
+        title: 'Monthly Evaluations Generated',
+        message: `Automated performance evaluations for ${month}/${year} have been generated for ${results.length} employees.`,
+        type: 'evaluation'
+      })
+    );
+    await Promise.all(adminNotificationPromises);
 
     res.json({
       success: true,
@@ -157,5 +185,66 @@ exports.generateMonthlyEvaluations = async (req, res) => {
   } catch (error) {
     console.error('Automated Evaluation Error:', error);
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Override an automated evaluation score
+// @route   PUT /api/evaluations/:id/override
+// @access  Private/Admin
+exports.overrideEvaluation = async (req, res) => {
+  try {
+    const { score, justification } = req.body;
+
+    if (!justification || justification.trim().length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Justification is required for overriding an evaluation' 
+      });
+    }
+
+    if (score === undefined || score < 0 || score > 100) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Score must be between 0 and 100' 
+      });
+    }
+
+    const evaluation = await Evaluation.findById(req.params.id);
+    if (!evaluation) {
+      return res.status(404).json({ success: false, message: 'Evaluation not found' });
+    }
+
+    // Store original score if not already overridden
+    if (!evaluation.isOverridden) {
+      evaluation.originalScore = evaluation.score;
+    }
+
+    // Update evaluation with override
+    evaluation.score = score;
+    evaluation.isOverridden = true;
+    evaluation.overriddenBy = req.user.id;
+    evaluation.overrideJustification = justification;
+
+    await evaluation.save();
+    await updateEmployeePerformance(evaluation.employeeId);
+
+    // Notify employee about the override
+    await Notification.create({
+      recipient: evaluation.employeeId,
+      title: 'Performance Score Adjusted',
+      message: `Your performance score for ${evaluation.month}/${evaluation.year} has been manually adjusted to ${score}/100. Reason: ${justification}`,
+      type: 'evaluation',
+      relatedId: evaluation._id
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Evaluation overridden successfully',
+      data: evaluation 
+    });
+
+  } catch (error) {
+    console.error('Override Evaluation Error:', error);
+    res.status(400).json({ success: false, message: error.message });
   }
 };

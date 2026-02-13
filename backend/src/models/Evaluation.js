@@ -38,11 +38,33 @@ const evaluationSchema = new mongoose.Schema({
   },
   details: {
     taskCompletionRate: Number,
+    taskCompletionRawValue: Number,
     onTimeRate: Number,
+    onTimeRawValue: Number,
     communicationScore: Number,
+    communicationRawValue: Number,
     totalTasks: Number,
     completedTasks: Number,
-    tasksWithUpdates: Number
+    onTimeTasks: Number,
+    tasksWithUpdates: Number,
+    weightedCompletionScore: Number,
+    weightedOnTimeScore: Number,
+    weightedCommunicationScore: Number
+  },
+  isOverridden: {
+    type: Boolean,
+    default: false
+  },
+  overriddenBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  overrideJustification: {
+    type: String,
+    trim: true
+  },
+  originalScore: {
+    type: Number
   },
   date: {
     type: Date,
