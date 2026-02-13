@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { EmployeeAnalytics, Task } from '../../types';
-import { format, parseISO, differenceInDays, startOfWeek, endOfWeek, eachWeekOfInterval, subMonths, isWithinInterval } from 'date-fns';
+import { format, parseISO, differenceInDays, startOfWeek, endOfWeek, eachWeekOfInterval, subMonths, isWithinInterval, startOfMonth } from 'date-fns';
 
 import { EmployeeAIChat } from './EmployeeAIChat';
 import { GraphDetailModal } from './GraphDetailModal';
