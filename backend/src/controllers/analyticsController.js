@@ -63,23 +63,28 @@ const calculateMetrics = (tasks) => {
 
   // On-Time Delivery & Turnaround Time
   let onTimeCount = 0;
-  let totalTurnaroundTime = 0; 
+  let totalTurnaroundTime = 0;
+  let tasksWithStartTime = 0;
 
   completed.forEach(task => {
     const deadline = task.deadline ? new Date(task.deadline) : null;
     const completedAt = task.completedAt ? new Date(task.completedAt) : new Date(task.updatedAt);
-    // Use startedAt if available, else createdAt
-    const startTime = task.startedAt ? new Date(task.startedAt) : new Date(task.createdAt);
 
     if (deadline && completedAt <= deadline) {
       onTimeCount++;
     }
 
-    totalTurnaroundTime += (completedAt - startTime);
+    // Only calculate turnaround for tasks that were actually started
+    // This excludes waiting/queue time
+    if (task.startedAt) {
+      const startTime = new Date(task.startedAt);
+      totalTurnaroundTime += (completedAt - startTime);
+      tasksWithStartTime++;
+    }
   });
 
   const timelinessScore = completed.length > 0 ? (onTimeCount / completed.length) * 100 : 0;
-  const avgTurnaroundTimeDays = completed.length > 0 ? (totalTurnaroundTime / completed.length) / (1000 * 60 * 60 * 24) : 0;
+  const avgTurnaroundTimeDays = tasksWithStartTime > 0 ? (totalTurnaroundTime / tasksWithStartTime) / (1000 * 60 * 60 * 24) : 0;
 
   return {
     total,

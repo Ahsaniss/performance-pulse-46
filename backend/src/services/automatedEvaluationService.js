@@ -28,22 +28,46 @@ exports.generateAutomatedEvaluation = async (userId, month, year) => {
 
   // --- B. On-Time Delivery (40%) ---
   // Tasks delivered on time without delay
-  // Formula: (Tasks Delivered On Time / Total Completed Tasks) * 100
+  // Formula: (Tasks Delivered On Time / Total Completed Tasks WITH DEADLINES) * 100
   const onTimeTasks = tasks.filter(t => {
     if (t.status !== 'completed' || !t.completedAt || !t.deadline) return false;
     return new Date(t.completedAt) <= new Date(t.deadline);
   }).length;
   
-  const onTimeRate = completedTasks === 0 ? 0 : (onTimeTasks / completedTasks) * 100;
+  // Only count completed tasks that HAD deadlines
+  const completedTasksWithDeadlines = tasks.filter(t => 
+    t.status === 'completed' && t.deadline
+  ).length;
+  
+  // If no tasks with deadlines, assume 100% compliance
+  const onTimeRate = completedTasksWithDeadlines === 0 ? 100 : (onTimeTasks / completedTasksWithDeadlines) * 100;
 
   // --- C. Communication Score (20%) ---
   // Calculate based on consistent use of 'Report Progress' feature
   // Reward employees who submit daily/regular progress updates, upload evidence, maintain audit trail
-  const tasksWithUpdates = tasks.filter(t => {
-    return t.progressUpdates && t.progressUpdates.length > 0;
+  const tasksWithQualityUpdates = tasks.filter(t => {
+    if (!t.progressUpdates || t.progressUpdates.length === 0) return false;
+    
+    // Calculate task duration in days
+    const endDate = t.completedAt ? new Date(t.completedAt) : new Date();
+    const startDate = new Date(t.createdAt);
+    const daysActive = Math.max(1, Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)));
+    
+    // Quality criteria:
+    // 1. For tasks > 5 days, require at least 1 update per 5 days
+    const requiredUpdates = Math.max(1, Math.floor(daysActive / 5));
+    const hasEnoughUpdates = t.progressUpdates.length >= requiredUpdates;
+    
+    // 2. Check for evidence (files/screenshots) - bonus for documentation
+    const hasEvidence = t.progressUpdates.some(u => 
+      u.attachments && u.attachments.length > 0
+    );
+    
+    // Accept if either has enough updates OR has evidence
+    return hasEnoughUpdates || hasEvidence;
   }).length;
 
-  const communicationScore = totalTasks === 0 ? 0 : (tasksWithUpdates / totalTasks) * 100;
+  const communicationScore = totalTasks === 0 ? 0 : (tasksWithQualityUpdates / totalTasks) * 100;
 
   // --- FINAL WEIGHTED SCORE ---
   // (Task Completion Rate * 0.40) + (On-Time Delivery * 0.40) + (Communication Score * 0.20)
@@ -76,11 +100,12 @@ exports.generateAutomatedEvaluation = async (userId, month, year) => {
       // Raw values
       taskCompletionRawValue: completedTasks,
       onTimeRawValue: onTimeTasks,
-      communicationRawValue: tasksWithUpdates,
+      communicationRawValue: tasksWithQualityUpdates,
       totalTasks,
       completedTasks,
       onTimeTasks,
-      tasksWithUpdates
+      tasksWithUpdates: tasksWithQualityUpdates,
+      completedTasksWithDeadlines
     },
     comments: `Automated evaluation for ${month}/${year}. Completion: ${Math.round(completionRate)}%, On-Time: ${Math.round(onTimeRate)}%, Communication: ${Math.round(communicationScore)}%. Final Score: ${Math.round(finalScore)}/100 - ${ratingLabel}.`,
     type: 'Automated',

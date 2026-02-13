@@ -86,26 +86,56 @@ export const EmployeeMISDashboard: React.FC<EmployeeMISDashboardProps> = ({ anal
   };
 
   // 1. Completion Rate Donut Data
-  // Calculate locally to ensure mutual exclusivity for the chart
-  const completedCount = taskHistory.filter(t => t.status === 'completed').length;
-  const inProgressCount = taskHistory.filter(t => t.status === 'in-progress').length;
-  const overdueCount = taskHistory.filter(t => t.status !== 'completed' && t.deadline && new Date(t.deadline) < new Date()).length;
-  // Pending is strictly 'pending' status, excluding overdue
-  const pendingCount = taskHistory.filter(t => t.status === 'pending' && (!t.deadline || new Date(t.deadline) >= new Date())).length;
+  // Use priority-based categorization to avoid overlap
+  const completedTasks = taskHistory.filter(t => t.status === 'completed');
+  const remainingTasks = taskHistory.filter(t => t.status !== 'completed');
+  
+  // Priority 1: Overdue (highest priority)
+  const overdueTasks = remainingTasks.filter(t => 
+    t.deadline && new Date(t.deadline) < new Date()
+  );
+  
+  // Priority 2: In Progress (excluding overdue)
+  const inProgressTasks = remainingTasks.filter(t => 
+    t.status === 'in-progress' && !overdueTasks.some(ot => ot.id === t.id)
+  );
+  
+  // Priority 3: Pending (everything else)
+  const pendingTasks = remainingTasks.filter(t => 
+    !overdueTasks.some(ot => ot.id === t.id) && 
+    !inProgressTasks.some(it => it.id === t.id)
+  );
 
   const completionData = [
-    { name: 'Completed', value: completedCount },
-    { name: 'In Progress', value: inProgressCount },
-    { name: 'Pending', value: pendingCount },
-    { name: 'Overdue', value: overdueCount },
+    { name: 'Completed', value: completedTasks.length },
+    { name: 'In Progress', value: inProgressTasks.length },
+    { name: 'Pending', value: pendingTasks.length },
+    { name: 'Overdue', value: overdueTasks.length },
   ];
 
   // 2. Efficiency Stacked Bar Data (Last 6 Months)
   const getEfficiencyData = () => {
     const months = [];
+    const now = new Date();
+    
+    // Find the earliest task date to avoid showing empty months before employee joined
+    const earliestTaskDate = taskHistory.length > 0
+      ? taskHistory.reduce((earliest, task) => {
+          if (!task.createdAt) return earliest;
+          const taskDate = parseISO(task.createdAt);
+          return taskDate < earliest ? taskDate : earliest;
+        }, parseISO(taskHistory[0].createdAt))
+      : now;
+    
     for (let i = 5; i >= 0; i--) {
-      const date = subMonths(new Date(), i);
+      const date = subMonths(now, i);
       const monthKey = format(date, 'MMM yyyy');
+      
+      // Skip months before employee had any tasks
+      if (date < startOfMonth(earliestTaskDate)) {
+        continue;
+      }
+      
       months.push({ 
         name: monthKey, 
         onTime: 0, 
@@ -117,11 +147,12 @@ export const EmployeeMISDashboard: React.FC<EmployeeMISDashboardProps> = ({ anal
     }
 
     taskHistory.forEach(task => {
-      // Handle Completed Tasks
-      if (task.status === 'completed' && task.completedAt) {
-        const completedDate = parseISO(task.completedAt);
-        const monthKey = format(completedDate, 'MMM yyyy');
-        const monthData = months.find(m => m.name === monthKey);
+      try {
+        // Handle Completed Tasks
+        if (task.status === 'completed' && task.completedAt) {
+          const completedDate = parseISO(task.completedAt);
+          const monthKey = format(completedDate, 'MMM yyyy');
+          const monthData = months.find(m => m.name === monthKey);
         
         if (monthData) {
           if (task.deadline) {
@@ -147,6 +178,10 @@ export const EmployeeMISDashboard: React.FC<EmployeeMISDashboardProps> = ({ anal
             monthData.details.overdue.push(task.title);
           }
         }
+      }
+      } catch (error) {
+        // Skip tasks with invalid date formats
+        console.warn('Invalid date format in task:', task.id, error);
       }
     });
     return months;
@@ -280,9 +315,13 @@ export const EmployeeMISDashboard: React.FC<EmployeeMISDashboardProps> = ({ anal
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">Deadline Compliance</p>
             <p className="text-3xl font-bold">
-              {taskHistory.length > 0 
-                ? Math.round((taskHistory.filter(t => t.status === 'completed' && t.completedAt && t.deadline && parseISO(t.completedAt) <= parseISO(t.deadline)).length / Math.max(1, taskHistory.filter(t => t.status === 'completed').length)) * 100) 
-                : 0}%
+              {(() => {
+                const completedWithDeadlines = taskHistory.filter(t => t.status === 'completed' && t.deadline).length;
+                const onTimeCompleted = taskHistory.filter(t => t.status === 'completed' && t.completedAt && t.deadline && parseISO(t.completedAt) <= parseISO(t.deadline)).length;
+                return completedWithDeadlines > 0 
+                  ? Math.round((onTimeCompleted / completedWithDeadlines) * 100) + '%'
+                  : 'N/A';
+              })()}
             </p>
             <p className="text-xs text-muted-foreground mt-1">Target: 90%</p>
           </CardContent>
@@ -303,7 +342,7 @@ export const EmployeeMISDashboard: React.FC<EmployeeMISDashboardProps> = ({ anal
               {taskHistory.filter(t => t.completedAt).length > 0
                 ? Math.round(taskHistory.filter(t => t.completedAt).reduce((sum, t) => {
                     const days = differenceInDays(parseISO(t.completedAt!), parseISO(t.createdAt));
-                    return sum + Math.max(1, days);
+                    return sum + Math.max(0, days); // Allow 0 days for same-day completion
                   }, 0) / taskHistory.filter(t => t.completedAt).length)
                 : 0}
             </p>

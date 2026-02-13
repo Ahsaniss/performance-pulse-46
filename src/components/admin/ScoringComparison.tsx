@@ -31,10 +31,45 @@ export const ScoringComparison: React.FC<ScoringComparisonProps> = ({ taskHistor
   const [selectedPoint, setSelectedPoint] = useState<DataPoint | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  // Check if we have data
+  if (!taskHistory || taskHistory.length === 0) {
+    return (
+      <Card className="col-span-1 lg:col-span-3 bg-white/80 backdrop-blur-xl border border-gray-200/50 shadow-xl">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-200/50">
+          <CardTitle className="text-xl font-bold text-gray-900">Scoring Comparison</CardTitle>
+          <CardDescription className="text-gray-600">
+            Target vs Actual Performance
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="flex flex-col items-center justify-center h-[400px] text-center">
+            <div className="text-6xl mb-4">📊</div>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">No Data Available</h3>
+            <p className="text-sm text-gray-500 max-w-md">
+              Task history is empty. Performance data will appear here once tasks are assigned and completed.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Generate last 30 days of data
   const generateScoringData = (): DataPoint[] => {
     const data: DataPoint[] = [];
     const today = new Date();
+    
+    // Calculate dynamic target based on historical average (last 90 days)
+    const ninetyDaysAgo = new Date(today);
+    ninetyDaysAgo.setDate(today.getDate() - 90);
+    const historicalTasks = taskHistory.filter(t => {
+      if (!t.createdAt) return false;
+      const taskDate = parseISO(t.createdAt);
+      return taskDate >= ninetyDaysAgo;
+    });
+    const avgTasksPerDay = historicalTasks.length > 0 ? historicalTasks.length / 90 : 3;
+    // Set target at 110% of historical average for growth
+    const dailyTarget = Math.max(1, Math.round(avgTasksPerDay * 1.1));
     
     for (let i = 29; i >= 0; i--) {
       const date = new Date(today);
@@ -50,8 +85,8 @@ export const ScoringComparison: React.FC<ScoringComparisonProps> = ({ taskHistor
       const completedCount = dayTasks.filter(t => t.status === 'completed').length;
       const totalCount = dayTasks.length;
       
-      // Target is cumulative expected (e.g., 5 tasks per day target)
-      const targetCumulative = (29 - i + 1) * 5;
+      // Dynamic cumulative target
+      const targetCumulative = (29 - i + 1) * dailyTarget;
       
       // Actual is cumulative completed tasks up to this day
       const actualCumulative = taskHistory.filter(t => {

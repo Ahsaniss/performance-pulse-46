@@ -21,7 +21,7 @@ export const useAdminStats = (tasks: any[], employees: any[], evaluations: any[]
           (e.employeeId?._id || e.employeeId) === emp.id
         );
         if (empEvaluations.length === 0) return 0;
-        const avgEmpScore = empEvaluations.reduce((sum: number, e: any) => sum + (e.overallScore || 0), 0) / empEvaluations.length;
+        const avgEmpScore = empEvaluations.reduce((sum: number, e: any) => sum + (e.score || 0), 0) / empEvaluations.length;
         return avgEmpScore;
       });
       const totalAvg = employeeScores.reduce((a, b) => a + b, 0) / employees.length;
