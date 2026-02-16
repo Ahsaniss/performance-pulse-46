@@ -57,7 +57,18 @@ exports.updateTask = async (req, res) => {
 
     // Authorization: Only admin or assigned user can update
     const isAdmin = req.user.role === 'admin';
-    const isAssignedUser = existingTask.assignedTo.toString() === req.user.id;
+    // Handle both populated object and direct ID
+    const assignedToId = existingTask.assignedTo._id || existingTask.assignedTo;
+    const isAssignedUser = assignedToId.toString() === req.user.id;
+    
+    // Debug logging
+    console.log('Update Task Authorization:', {
+      taskId: req.params.id,
+      assignedToId: assignedToId.toString(),
+      currentUserId: req.user.id,
+      isAdmin,
+      isAssignedUser
+    });
     
     if (!isAdmin && !isAssignedUser) {
       return res.status(403).json({ 
@@ -67,12 +78,12 @@ exports.updateTask = async (req, res) => {
     }
 
     // Whitelist allowed fields
-    const allowedFields = ['title', 'description', 'status', 'priority', 'deadline', 'difficulty'];
+    const allowedFields = ['title', 'description', 'status', 'priority', 'deadline', 'difficulty', 'currentProgress'];
     const updates = {};
     
     // Only allow certain fields for non-admin users
     if (!isAdmin) {
-      const userAllowedFields = ['status']; // Regular users can only update status
+      const userAllowedFields = ['status', 'currentProgress']; // Regular users can update status and progress percentage
       Object.keys(req.body).forEach(key => {
         if (userAllowedFields.includes(key)) {
           updates[key] = req.body[key];
@@ -87,10 +98,19 @@ exports.updateTask = async (req, res) => {
       });
     }
 
+    // Skip update if no valid fields were provided
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No valid fields to update' 
+      });
+    }
+
     const task = await taskService.updateTask(req.params.id, updates);
 
     res.json({ success: true, data: task });
   } catch (error) {
+    console.error('Task update error:', error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -107,9 +127,28 @@ exports.updateTaskProgress = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Task not found' });
     }
 
+    // Verify user is authenticated
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'User not authenticated' 
+      });
+    }
+
     // Authorization: Only assigned user or admin can update progress
     const isAdmin = req.user.role === 'admin';
-    const isAssignedUser = existingTask.assignedTo.toString() === req.user.id;
+    // Handle both populated object and direct ID
+    const assignedToId = existingTask.assignedTo._id || existingTask.assignedTo;
+    const isAssignedUser = assignedToId.toString() === req.user.id;
+    
+    // Debug logging
+    console.log('Update Progress Authorization:', {
+      taskId: req.params.id,
+      assignedToId: assignedToId.toString(),
+      currentUserId: req.user.id,
+      isAdmin,
+      isAssignedUser
+    });
     
     if (!isAdmin && !isAssignedUser) {
       return res.status(403).json({ 
@@ -121,21 +160,35 @@ exports.updateTaskProgress = async (req, res) => {
     const { percentage, comment, strategy, blockers, tags, kpiMetrics, aiSuggestion, estimatedCompletion } = req.body;
     const files = req.files || [];
 
+    // Validate required fields
+    if (percentage === undefined || percentage === null) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Progress percentage is required' 
+      });
+    }
+
     // Parse JSON fields that may come as strings from FormData
     let parsedTags = [];
     let parsedKpiMetrics = [];
     try {
       parsedTags = typeof tags === 'string' ? JSON.parse(tags) : (tags || []);
-    } catch (e) { parsedTags = []; }
+    } catch (e) { 
+      console.warn('Failed to parse tags:', e);
+      parsedTags = []; 
+    }
     try {
       parsedKpiMetrics = typeof kpiMetrics === 'string' ? JSON.parse(kpiMetrics) : (kpiMetrics || []);
-    } catch (e) { parsedKpiMetrics = []; }
+    } catch (e) { 
+      console.warn('Failed to parse kpiMetrics:', e);
+      parsedKpiMetrics = []; 
+    }
 
     const task = await taskService.updateTaskProgress(req.params.id, {
-      percentage,
-      comment,
-      strategy,
-      blockers,
+      percentage: Number(percentage),
+      comment: comment || '',
+      strategy: strategy || '',
+      blockers: blockers || '',
       files,
       tags: parsedTags,
       kpiMetrics: parsedKpiMetrics,
@@ -145,10 +198,11 @@ exports.updateTaskProgress = async (req, res) => {
 
     res.json({ success: true, data: task });
   } catch (error) {
+    console.error('Progress update error:', error);
     if (error.message === 'Task not found') {
       return res.status(404).json({ success: false, message: 'Task not found' });
     }
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message || 'Failed to update progress' });
   }
 };
 

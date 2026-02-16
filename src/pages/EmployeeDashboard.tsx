@@ -111,10 +111,22 @@ const EmployeeDashboard = () => {
   const handleTaskStatusUpdate = async (taskId: string, newStatus: Task['status']) => {
     try {
       await updateTask(taskId, { status: newStatus });
-      toast.success(`Task status updated to ${newStatus.replace('-', ' ')}`);
-    } catch (error) {
+      // Success toast is handled by useTasks hook
+    } catch (error: any) {
       console.error('Error updating task status:', error);
-      toast.error('Failed to update task status');
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to update task status';
+      
+      if (error?.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        // Optionally redirect to login
+        setTimeout(() => logout(), 2000);
+      } else if (error?.response?.status === 403) {
+        toast.error('You do not have permission to update this task.');
+      } else if (error?.response?.status === 404) {
+        toast.error('Task not found. It may have been deleted.');
+      } else {
+        toast.error(errorMessage);
+      }
     }
   };
 
